@@ -19,9 +19,10 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ['lib']
 
-  spec.required_ruby_version = '>= 2.6'
+  spec.required_ruby_version = '>= 3.1.0' # Updated required Ruby version for gemini-ai compatibility
 
   spec.add_runtime_dependency 'ruby-openai', '~> 3.7'
+  spec.add_runtime_dependency 'gemini-ai' # Using gemini-ai gem instead
   spec.add_runtime_dependency 'loco_strings', '~> 0.1.3'
 
   spec.add_development_dependency('bundler')

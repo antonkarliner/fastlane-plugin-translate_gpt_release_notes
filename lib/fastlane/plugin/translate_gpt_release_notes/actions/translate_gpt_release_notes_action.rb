@@ -98,25 +98,51 @@ module Fastlane
       end
 
       def self.description
-        "Translate release notes or changelogs for iOS and Android apps using OpenAI's GPT API"
+        "Translate release notes or changelogs for iOS and Android apps using OpenAI GPT or Google Gemini API" # Updated description
       end
 
       def self.available_options
         [
+          # LLM Provider Selection
+          FastlaneCore::ConfigItem.new(
+            key: :llm_provider,
+            env_name: "LLM_PROVIDER",
+            description: "The LLM provider to use ('openai' or 'gemini')",
+            type: String,
+            default_value: 'openai',
+            verify_block: proc do |value|
+              UI.user_error!("Invalid LLM provider: #{value}. Must be 'openai' or 'gemini'.") unless ['openai', 'gemini'].include?(value)
+            end
+          ),
+
+          # OpenAI Options
           FastlaneCore::ConfigItem.new(
             key: :api_token,
             env_name: "GPT_API_KEY",
-            description: "API token for ChatGPT",
+            description: "API token for OpenAI GPT (used if llm_provider is 'openai')",
             sensitive: true,
             code_gen_sensitive: true,
             default_value: ""
           ),
           FastlaneCore::ConfigItem.new(
             key: :model_name,
-            env_name: "GPT_MODEL_NAME",
-            description: "Name of the ChatGPT model to use",
-            default_value: "gpt-4-turbo-preview"
+            env_name: "LLM_MODEL_NAME", # Changed env_name to be generic
+            description: "Name of the LLM model to use (e.g., 'gpt-4-1106-preview' for OpenAI, 'gemini-1.5-flash' for Gemini). Must be specified if using Gemini",
+            optional: true, # Optional because OpenAI has a default, but required for Gemini if not default
+            default_value: "gpt-4-1106-preview" # Updated default OpenAI model
           ),
+
+          # Gemini Options
+          FastlaneCore::ConfigItem.new(
+            key: :gemini_api_key,
+            env_name: "GEMINI_API_KEY",
+            description: "API Key for Google Gemini (used if llm_provider is 'gemini')",
+            sensitive: true,
+            code_gen_sensitive: true,
+            optional: true # Optional because it's only needed for Gemini
+          ),
+
+          # Common Options
           FastlaneCore::ConfigItem.new(
             key: :request_timeout,
             env_name: "GPT_REQUEST_TIMEOUT",
