@@ -3,7 +3,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = 'fastlane-plugin-translate_gpt_release_notes'
-  spec.version       = '0.0.3'
+  spec.version       = '0.1.0'
   spec.author        = 'Anton Karliner'
   spec.email         = 'anton@karliner.pro'
 
@@ -19,10 +19,11 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ['lib']
 
-  spec.required_ruby_version = '>= 2.6'
+  spec.required_ruby_version = '>= 3.1'
 
   spec.add_runtime_dependency 'ruby-openai', '~> 3.7'
-  spec.add_runtime_dependency 'loco_strings', '~> 0.1.3'
+  spec.add_runtime_dependency 'loco_strings', '~> 0.1.5'
+  spec.add_runtime_dependency 'nokogiri', '>= 1.18.9'
 
   spec.add_development_dependency('bundler')
   spec.add_development_dependency('fastlane', '>= 2.212.2')

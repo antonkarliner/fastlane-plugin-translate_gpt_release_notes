@@ -12,6 +12,13 @@ This project is a [fastlane](https://github.com/fastlane/fastlane) plugin. To ge
 fastlane add_plugin translate_gpt_release_notes
 ```
 
+### Requirements
+
+- Ruby >= 3.1
+- OpenAI API key
+
+**Note**: This plugin requires Ruby 3.1 or higher to ensure compatibility with the latest security patches in nokogiri.
+
 ## About translate-gpt-release-notes
 
 `translate-gpt-release-notes` is a fastlane plugin that allows you to translate release notes or changelogs for iOS and Android apps using OpenAI GPT API. Based on [translate-gpt by ftp27](https://github.com/ftp27/fastlane-plugin-translate_gpt).
