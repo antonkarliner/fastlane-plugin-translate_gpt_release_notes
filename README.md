@@ -37,7 +37,10 @@ The following example demonstrates how to use `translate-gpt-release-notes` in a
     translate_gpt_release_notes(
       master_locale: 'en-US',
       platform: 'ios',
-      context: 'This is an app about cute kittens'
+      context: 'This is an app about cute kittens',
+      model_name: 'gpt-5.2',
+      service_tier: 'flex',
+      request_timeout: 900
       # other parameters...
     )
 end
@@ -50,9 +53,10 @@ The following options are available for `translate-gpt-release-notes`:
 | Key | Description | Environment Variable |
 | --- | --- | --- |
 | `api_token` | The API key for your OpenAI GPT account. | `GPT_API_KEY` |
-| `model_name` | Name of the ChatGPT model to use (default: gpt-4-1106-preview) | `GPT_MODEL_NAME` |
+| `model_name` | Name of the ChatGPT model to use (default: gpt-5.2) | `GPT_MODEL_NAME` |
+| `service_tier` | OpenAI service tier to use (auto, default, flex, or priority). | `GPT_SERVICE_TIER` |
 | `temperature` | What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. Defaults to 0.5 | `GPT_TEMPERATURE` |
-| `request_timeout` | Timeout for the request in seconds. Defaults to 30 seconds | `GPT_REQUEST_TIMEOUT` |
+| `request_timeout` | Timeout for the request in seconds. Defaults to 30 seconds. If `service_tier` is `flex` and this is lower than 900, the plugin increases it to 900. | `GPT_REQUEST_TIMEOUT` |
 | `master_locale` | Master language/locale for the source texts | `MASTER_LOCALE` |
 | `context` | Context for translation to improve accuracy | `GPT_CONTEXT` |
 | `platform` | Platform for which to translate (ios or android, defaults to ios).| `PLATFORM` |
@@ -70,6 +74,7 @@ translate_gpt_release_notes(
   api_token: 'YOUR_API_KEY',
   master_locale: 'en-US',
   platform: 'ios',
+  model_name: 'gpt-5.2',
   context: 'This is an app about cute kittens'
 
 )
@@ -89,6 +94,7 @@ And then call `translate-gp-release-notes` without specifying an API key:
 translate_gpt_release_notes(
   master_locale: 'en-US',
   platform: 'ios',
+  model_name: 'gpt-5.2',
   context: 'This is an app about cute kittens'
 )
 ```
@@ -96,6 +102,8 @@ translate_gpt_release_notes(
 
 1. Android has a limit of 500 symbols for changelogs and sometimes translations can exceed this number, which leads to Google API errors when submitting the app. Plugin **tries** to handle this, however errors happen. Reducing the length of master_locale changelog usually helps. iOS has a limit of 4000 symbols, which is plenty.
 2. OpenAI API usage cost money, keep it in mind.
+3. If you use `service_tier: 'flex'`, the plugin increases `request_timeout` to 900s when it is set lower.
+4. Hint: Flex processing trades higher latency for lower prices, which can reduce costs for non-urgent translations.
 
 ## Issues and Feedback
 

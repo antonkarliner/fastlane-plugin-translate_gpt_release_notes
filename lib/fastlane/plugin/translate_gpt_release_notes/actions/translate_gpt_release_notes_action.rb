@@ -115,12 +115,26 @@ module Fastlane
             key: :model_name,
             env_name: "GPT_MODEL_NAME",
             description: "Name of the ChatGPT model to use",
-            default_value: "gpt-4-turbo-preview"
+            default_value: "gpt-5.2"
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :service_tier,
+            env_name: "GPT_SERVICE_TIER",
+            description: "OpenAI service tier to use (auto, default, flex, or priority)",
+            type: String,
+            optional: true,
+            verify_block: proc do |value|
+              next if value.nil? || value.to_s.strip.empty?
+              allowed_values = %w[auto default flex priority]
+              unless allowed_values.include?(value)
+                UI.user_error!("Invalid service_tier '#{value}'. Allowed values: #{allowed_values.join(', ')}")
+              end
+            end
           ),
           FastlaneCore::ConfigItem.new(
             key: :request_timeout,
             env_name: "GPT_REQUEST_TIMEOUT",
-            description: "Timeout for the request in seconds",
+            description: "Timeout for the request in seconds (auto-bumped to 900s for flex if lower)",
             type: Integer,
             default_value: 30
           ),

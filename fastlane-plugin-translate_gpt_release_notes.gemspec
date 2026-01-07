@@ -3,7 +3,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = 'fastlane-plugin-translate_gpt_release_notes'
-  spec.version       = '0.1.0'
+  spec.version       = '0.1.1'
   spec.author        = 'Anton Karliner'
   spec.email         = 'anton@karliner.pro'
 

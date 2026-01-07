@@ -9,9 +9,10 @@ module Fastlane
     class TranslateGptReleaseNotesHelper
       def initialize(params)
         @params = params
+        @params[:request_timeout] = normalize_request_timeout(@params)
         @client = OpenAI::Client.new(
           access_token: params[:api_token],
-          request_timeout: params[:request_timeout]
+          request_timeout: @params[:request_timeout]
         )
       end
 
@@ -32,13 +33,16 @@ module Fastlane
         end
 
         # Updated API call with max_tokens
-        response = @client.chat(
-          parameters: {
-            model: @params[:model_name] || 'gpt-4-1106-preview',
-            messages: [{ role: "user", content: prompt }],
-            temperature: @params[:temperature] || 0.5
-          }
-        )
+        parameters = {
+          model: @params[:model_name] || 'gpt-5.2',
+          messages: [{ role: "user", content: prompt }],
+          temperature: @params[:temperature] || 0.5
+        }
+
+        service_tier = @params[:service_tier].to_s.strip
+        parameters[:service_tier] = service_tier unless service_tier.empty?
+
+        response = @client.chat(parameters: parameters)
 
       
         error = response.dig("error", "message")
@@ -50,6 +54,18 @@ module Fastlane
           UI.message "Translated text: #{translated_text}"
           return translated_text
         end
+      end
+
+      def normalize_request_timeout(params)
+        service_tier = params[:service_tier].to_s.strip
+        raw_timeout = params[:request_timeout]
+        return nil if raw_timeout.nil?
+        timeout = raw_timeout.to_i
+        if service_tier == "flex" && timeout > 0 && timeout < 900
+          UI.message("Flex processing detected; increasing request_timeout to 900s.")
+          return 900
+        end
+        timeout
       end
       
       # Sleep for a specified number of seconds, displaying a progress bar
