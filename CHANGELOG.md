@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-01-29
+
+### Added
+
+#### Multi-Provider Support
+- **Anthropic Claude** provider integration for high-quality translations
+  - Default model: `claude-sonnet-4.5`
+  - Supports temperature control (0-1)
+  - Environment variable: `ANTHROPIC_API_KEY`
+  - Parameter: `anthropic_api_key`
+  
+- **Google Gemini** provider integration for cost-effective translations
+  - Default model: `gemini-2.5-flash`
+  - Supports temperature control (0-1)
+  - Environment variable: `GEMINI_API_KEY`
+  - Parameter: `gemini_api_key`
+  
+- **DeepL** provider integration for specialized translation API
+  - Automatic free/paid key detection (free keys end with `:fx`)
+  - Formality control (`default`, `more`, `less`)
+  - Environment variable: `DEEPL_API_KEY`
+  - Parameter: `deepl_api_key`
+  - Dedicated handling for Android 500-character limit
+
+#### Provider Selection
+- New `provider` parameter to select translation provider
+- New `TRANSLATION_PROVIDER` environment variable for default provider selection
+- Provider factory pattern for unified provider interface
+- Credential resolver supporting multiple simultaneous provider configurations
+
+#### New Parameters
+- `provider` - Select translation provider (`openai`, `anthropic`, `gemini`, `deepl`)
+- `openai_api_key` - OpenAI API key (alternative to environment variable)
+- `anthropic_api_key` - Anthropic API key (alternative to environment variable)
+- `gemini_api_key` - Google Gemini API key (alternative to environment variable)
+- `deepl_api_key` - DeepL API key (alternative to environment variable)
+
+### Changed
+- **OpenAI** remains the default provider for backward compatibility
+- Enhanced credential resolution with support for multiple providers
+- Improved error messages showing available providers when credentials are missing
+
+### Fixed
+- DeepL provider properly handles Android 500-character limit with truncation and warning
+- All AI providers now include character limit guidance in translation prompts for Android
+
+### Technical Details
+- **Architecture**: New provider abstraction layer with `BaseProvider` class
+- **Provider Factory**: Centralized provider instantiation via `ProviderFactory`
+- **Credential Resolver**: Multi-provider credential management with priority resolution
+- **Backward Compatibility**: Existing `GPT_API_KEY` environment variable still supported
+
+### Migration Guide
+If you're upgrading from version 0.1.x:
+1. **No breaking changes** - Existing configurations continue to work
+2. **Optional**: Set `TRANSLATION_PROVIDER` environment variable to experiment with new providers
+3. **Optional**: Add additional provider API keys to enable multi-provider setup
+4. All existing parameters (`api_token`, `model_name`, `temperature`, etc.) work unchanged
+
 ## [0.1.1] - 2026-01-07
 
 ### Added

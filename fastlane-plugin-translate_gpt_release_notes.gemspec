@@ -3,11 +3,11 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = 'fastlane-plugin-translate_gpt_release_notes'
-  spec.version       = '0.1.1'
+  spec.version       = '0.2.0'
   spec.author        = 'Anton Karliner'
   spec.email         = 'anton@karliner.pro'
 
-  spec.summary       = 'Translate release notes or changelogs for iOS and Android apps using OpenAI GPT API'
+  spec.summary       = 'Translate release notes using AI providers: OpenAI, Claude, Gemini, or DeepL'
   spec.homepage      = "https://github.com/antonkarliner/fastlane-plugin-translate_gpt_release_notes"
   spec.license       = "MIT"
 
@@ -24,6 +24,13 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency 'ruby-openai', '~> 3.7'
   spec.add_runtime_dependency 'loco_strings', '~> 0.1.5'
   spec.add_runtime_dependency 'nokogiri', '>= 1.18.9'
+
+  # Multi-provider support
+  spec.add_runtime_dependency 'anthropic', '~> 1.16'
+  spec.add_runtime_dependency 'deepl-rb', '~> 3.6'
+
+  # Fix SSL certificate verification issues on macOS with OpenSSL 3.4+
+  spec.add_runtime_dependency 'openssl', '>= 3.2.0'
 
   spec.add_development_dependency('bundler')
   spec.add_development_dependency('fastlane', '>= 2.212.2')

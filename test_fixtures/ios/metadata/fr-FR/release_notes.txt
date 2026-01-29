@@ -1,0 +1,5 @@
+Version 1.0.0 :
+- Ajout d'une nouvelle fonctionnalité de traduction prenant en charge plusieurs fournisseurs d'IA
+- Amélioration des performances et de la stabilité de l'application
+- Correction d'un bug avec le mode sombre sur iOS 17
+- Nouvelle fonctionnalité : Les utilisateurs peuvent désormais personnaliser leur tableau de bord

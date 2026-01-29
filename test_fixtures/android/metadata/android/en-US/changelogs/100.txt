@@ -1,0 +1,1 @@
+Version 1.0.0: Added multi-provider translation support, improved performance, fixed dark mode issues, and added dashboard customization.

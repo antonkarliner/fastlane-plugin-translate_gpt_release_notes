@@ -1,0 +1,5 @@
+Version 1.0.0:
+- Neue Übersetzungsfunktion hinzugefügt, die mehrere KI-Anbieter unterstützt
+- Verbesserte Leistung und Stabilität der App
+- Fehler mit dunklem Modus unter iOS 17 behoben
+- Neue Funktion: Nutzer können ihr Dashboard jetzt individuell gestalten
