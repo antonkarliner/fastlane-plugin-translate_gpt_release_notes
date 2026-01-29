@@ -1,6 +1,5 @@
 require 'fastlane_core/ui/ui'
-require 'openai'
-require 'json'
+require_relative 'providers/provider_factory'
 
 module Fastlane
   UI = FastlaneCore::UI unless Fastlane.const_defined?("UI")
@@ -9,65 +8,29 @@ module Fastlane
     class TranslateGptReleaseNotesHelper
       def initialize(params)
         @params = params
-        @params[:request_timeout] = normalize_request_timeout(@params)
-        @client = OpenAI::Client.new(
-          access_token: params[:api_token],
-          request_timeout: @params[:request_timeout]
-        )
+        provider_name = params[:provider] || 'openai'
+
+        # Validate provider selection
+        unless Providers::ProviderFactory.valid_provider?(provider_name)
+          UI.warning "Unknown provider '#{provider_name}', falling back to OpenAI"
+          provider_name = 'openai'
+        end
+
+        # Create provider via factory (handles credential resolution)
+        @provider = Providers::ProviderFactory.create(provider_name, params)
+
+        # Validate provider configuration
+        unless @provider.valid?
+          UI.user_error!("Provider configuration errors: #{@provider.config_errors.join(', ')}")
+        end
       end
 
-      # Request a translation from the GPT API
-      def translate_text(text, target_locale, platform)
+      # Request a translation from the configured provider
+      def translate_text(text, target_locale, _platform)
         source_locale = @params[:master_locale]
-        prompt = "Translate this text from #{source_locale} to #{target_locale}:\n#{text}"
-
-
-        # Add condition for Android platform
-        if platform == 'android'
-          prompt += "\n\nNote: The length of the translated text should be 500 symbols maximum. Rephrase a little if needed."
-        end
-
-        # Context handling
-        if @params[:context] && !@params[:context].empty?
-          prompt = "Context: #{@params[:context]}\n" + prompt
-        end
-
-        # Updated API call with max_tokens
-        parameters = {
-          model: @params[:model_name] || 'gpt-5.2',
-          messages: [{ role: "user", content: prompt }],
-          temperature: @params[:temperature] || 0.5
-        }
-
-        service_tier = @params[:service_tier].to_s.strip
-        parameters[:service_tier] = service_tier unless service_tier.empty?
-
-        response = @client.chat(parameters: parameters)
-
-      
-        error = response.dig("error", "message")
-        if error
-          UI.error "Error translating text: #{error}"
-          return nil
-        else
-          translated_text = response.dig("choices", 0, "message", "content").strip
-          UI.message "Translated text: #{translated_text}"
-          return translated_text
-        end
+        @provider.translate(text, source_locale, target_locale)
       end
 
-      def normalize_request_timeout(params)
-        service_tier = params[:service_tier].to_s.strip
-        raw_timeout = params[:request_timeout]
-        return nil if raw_timeout.nil?
-        timeout = raw_timeout.to_i
-        if service_tier == "flex" && timeout > 0 && timeout < 900
-          UI.message("Flex processing detected; increasing request_timeout to 900s.")
-          return 900
-        end
-        timeout
-      end
-      
       # Sleep for a specified number of seconds, displaying a progress bar
       def wait(seconds = @params[:request_timeout])
         sleep_time = 0
@@ -105,7 +68,7 @@ module Fastlane
         white:   37,
         reset:   0,
       }
-    
+
       def self.colorize(text, color)
         color_code = COLORS[color.to_sym]
         "\e[#{color_code}m#{text}\e[0m"

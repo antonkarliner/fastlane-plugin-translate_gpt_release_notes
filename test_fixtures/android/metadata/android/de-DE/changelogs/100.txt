@@ -1,0 +1,1 @@
+Version 1.0.0: Unterstützung für Multi-Provider-Übersetzungen, verbesserte Leistung, Behebung von Problemen im dunklen Modus und zusätzliche Anpassung des Dashboards.

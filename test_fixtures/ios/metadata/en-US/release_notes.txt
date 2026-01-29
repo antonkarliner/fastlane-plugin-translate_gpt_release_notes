@@ -1,0 +1,5 @@
+Version 1.0.0:
+- Added new translation feature supporting multiple AI providers
+- Improved app performance and stability
+- Fixed bug with dark mode on iOS 17
+- New feature: Users can now customize their dashboard

@@ -1,0 +1,1 @@
+Version 1.0.0 : Ajout de la prise en charge des traductions multi-fournisseurs, amélioration des performances, correction des problèmes liés au mode sombre et ajout de la personnalisation du tableau de bord.

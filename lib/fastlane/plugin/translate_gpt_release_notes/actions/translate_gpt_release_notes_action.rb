@@ -1,12 +1,24 @@
 require 'fastlane/action'
-require 'openai'
 require_relative '../helper/translate_gpt_release_notes_helper'
+require_relative '../helper/credential_resolver'
+require_relative '../helper/providers/provider_factory'
 require 'fileutils'
 
 module Fastlane
   module Actions
     class TranslateGptReleaseNotesAction < Action
       def self.run(params)
+        provider_name = params[:provider] || 'openai'
+
+        unless Helper::CredentialResolver.credentials_exist?(provider_name, params)
+          available = Helper::CredentialResolver.available_providers(params)
+          if available.empty?
+            UI.user_error!("No translation provider credentials configured. Set one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, or DEEPL_API_KEY")
+          else
+            UI.user_error!("Provider '#{provider_name}' has no credentials. Available providers: #{available.join(', ')}")
+          end
+        end
+
         # Define the path for the last run time file
         last_run_file = "last_successful_run.txt"
 
@@ -98,11 +110,60 @@ module Fastlane
       end
 
       def self.description
-        "Translate release notes or changelogs for iOS and Android apps using OpenAI's GPT API"
+        "Translate release notes using AI providers: OpenAI, Claude, Gemini, or DeepL"
       end
 
       def self.available_options
         [
+          FastlaneCore::ConfigItem.new(
+            key: :provider,
+            env_name: 'TRANSLATION_PROVIDER',
+            description: "Translation provider to use (#{Helper::Providers::ProviderFactory.available_provider_names.join(', ')})",
+            type: String,
+            default_value: 'openai',
+            verify_block: proc do |value|
+              unless Helper::Providers::ProviderFactory.valid_provider?(value)
+                available = Helper::Providers::ProviderFactory.available_provider_names.join(', ')
+                UI.user_error!("Invalid provider '#{value}'. Available: #{available}")
+              end
+            end
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :openai_api_key,
+            env_name: 'OPENAI_API_KEY',
+            description: 'OpenAI API key (alternative to environment variable)',
+            sensitive: true,
+            code_gen_sensitive: true,
+            optional: true,
+            default_value: nil
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :anthropic_api_key,
+            env_name: 'ANTHROPIC_API_KEY',
+            description: 'Anthropic API key (alternative to environment variable)',
+            sensitive: true,
+            code_gen_sensitive: true,
+            optional: true,
+            default_value: nil
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :gemini_api_key,
+            env_name: 'GEMINI_API_KEY',
+            description: 'Google Gemini API key (alternative to environment variable)',
+            sensitive: true,
+            code_gen_sensitive: true,
+            optional: true,
+            default_value: nil
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :deepl_api_key,
+            env_name: 'DEEPL_API_KEY',
+            description: 'DeepL API key (alternative to environment variable)',
+            sensitive: true,
+            code_gen_sensitive: true,
+            optional: true,
+            default_value: nil
+          ),
           FastlaneCore::ConfigItem.new(
             key: :api_token,
             env_name: "GPT_API_KEY",
@@ -114,7 +175,7 @@ module Fastlane
           FastlaneCore::ConfigItem.new(
             key: :model_name,
             env_name: "GPT_MODEL_NAME",
-            description: "Name of the ChatGPT model to use",
+            description: "Name of the AI model to use (provider-specific)",
             default_value: "gpt-5.2"
           ),
           FastlaneCore::ConfigItem.new(
