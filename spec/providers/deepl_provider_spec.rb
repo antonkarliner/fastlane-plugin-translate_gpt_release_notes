@@ -149,6 +149,40 @@ describe Fastlane::Helper::Providers::DeepLProvider do
         provider.translate('Hello World', 'en-US', 'de-DE')
       end
 
+      it 'includes glossary terms in context' do
+        expect(DeepL).to receive(:translate).with(
+          'Hello World', 'EN', 'DE',
+          hash_including(context: 'Glossary: Home Screen = Ecran d\'accueil; Settings = Parametres')
+        ).and_return(mock_result)
+
+        provider = described_class.new(valid_params)
+        provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {
+          "Home Screen" => "Ecran d'accueil",
+          "Settings" => "Parametres"
+        })
+      end
+
+      it 'combines context and glossary terms' do
+        expect(DeepL).to receive(:translate).with(
+          'Hello World', 'EN', 'DE',
+          hash_including(context: 'Mobile app. Glossary: Settings = Parametres')
+        ).and_return(mock_result)
+
+        provider = described_class.new(valid_params.merge(context: 'Mobile app'))
+        provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {
+          "Settings" => "Parametres"
+        })
+      end
+
+      it 'does not add glossary to context when terms are empty' do
+        expect(DeepL).to receive(:translate).with(
+          'Hello World', 'EN', 'DE', {}
+        ).and_return(mock_result)
+
+        provider = described_class.new(valid_params)
+        provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {})
+      end
+
       it 'includes formality option when specified' do
         expect(DeepL).to receive(:translate).with(
           'Hello World', 'EN', 'DE', hash_including(formality: 'more')

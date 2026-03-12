@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-03-12
+
+### Added
+
+#### Glossary Support (Experimental)
+- **Automatic glossary extraction** from localization directories — point the plugin at your existing
+  l10n files and it will extract UI terms and their translations across all locales
+- **Curated JSON glossary** support for maximum control over critical terms
+- **Multi-format support**: ARB (Flutter), Apple `.strings`, Android `strings.xml`, JSON i18n, XLIFF/XLF
+- **Fuzzy matching** with smart filtering:
+  - Full substring matching for exact term presence
+  - Multi-word matching requiring 2+ significant words (4+ chars, excluding stopwords)
+  - Automatic filtering of terms shorter than 4 chars or longer than 80 chars
+  - Built-in English stopword list to reduce false positives
+- **Locale canonicalization** supporting all common formats: `en-US`, `en_US`, `en-rUS`
+- New `glossary` parameter (path to JSON glossary file)
+- New `glossary_dir` parameter (path to localization directory)
+- New `GLOSSARY_PATH` and `GLOSSARY_DIR` environment variables
+
+#### Improved Translation Prompts
+- **Restructured prompts** for all AI providers: instructions and glossary now come before
+  the text to translate, improving instruction following
+- **Output format instruction**: All prompts now include "Respond with ONLY the translated text"
+  to prevent AI commentary in translations
+- **OpenAI system message**: OpenAI provider now uses separate system and user messages for
+  better glossary adherence and cleaner output
+- **Stronger glossary directive**: "Apply these exact translations for the specified terms"
+
+#### Console Logging
+- Glossary loading progress: source format detection, total terms loaded
+- Per-translation: number of glossary terms matched for each target locale
+
+### Changed
+- `build_prompt` restructured: instructions first, context/glossary in the middle, text to translate last
+- OpenAI provider uses system + user message split instead of single user message
+- Android limitation instruction extracted to standalone method for cleaner code
+
+### Technical Details
+- **GlossaryLoader**: New class handling multi-format parsing, fuzzy matching, and locale canonicalization
+- **293 tests** pass with 95%+ line coverage
+- **Integration tested** with real API calls against OpenAI (gpt-4o-mini), Gemini (gemini-2.5-flash), and DeepL
+
 ## [0.2.0] - 2026-01-29
 
 ### Added

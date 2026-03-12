@@ -140,7 +140,7 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
         expect(mock_client).to receive(:complete) do |args|
           prompt = args[:prompt]
 
-          expect(prompt).to include('Translate the following text from en-US to de-DE')
+          expect(prompt).to include('Translate the following release notes from en-US to de-DE')
           expect(prompt).to include('Hello World')
 
           mock_response
@@ -191,6 +191,35 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
         ).and_return(mock_response)
 
         provider.translate('Hello', 'en', 'de')
+      end
+    end
+
+    context 'with glossary terms' do
+      it 'includes glossary terms in prompt' do
+        expect(mock_client).to receive(:complete) do |args|
+          prompt = args[:prompt]
+
+          expect(prompt).to include('glossary for consistent terminology')
+          expect(prompt).to include('"Settings" -> "Parametres"')
+
+          mock_response
+        end
+
+        provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {
+          "Settings" => "Parametres"
+        })
+      end
+
+      it 'does not include glossary section when terms are empty' do
+        expect(mock_client).to receive(:complete) do |args|
+          prompt = args[:prompt]
+
+          expect(prompt).not_to include('glossary')
+
+          mock_response
+        end
+
+        provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {})
       end
     end
 

@@ -171,6 +171,109 @@ translate_gpt_release_notes(
 
 **Note**: DeepL automatically detects free vs paid API keys (free keys end with `:fx`) and uses the appropriate endpoint.
 
+## Glossary Support (Experimental)
+
+> **Note**: Glossary support is an experimental feature. If you encounter any issues, please [open an issue on GitHub](https://github.com/antonkarliner/fastlane-plugin-translate_gpt_release_notes/issues).
+
+The glossary feature ensures consistent translation of app-specific terms (screen names, feature names, UI labels) across all locales. Instead of letting the AI provider guess how to translate "Brew Diary" or "Cupping Score", the glossary provides exact translations extracted from your existing localization files.
+
+### How It Works
+
+1. The plugin loads glossary terms from a JSON file and/or a directory of localization files
+2. Before each translation, it fuzzy-matches terms from the glossary against the source text
+3. Only relevant terms are included in the translation prompt (keeping it concise)
+4. Each provider uses the glossary differently:
+   - **OpenAI**: Glossary terms are sent as a system message for strong instruction following
+   - **Anthropic / Gemini**: Glossary terms are included in the translation prompt
+   - **DeepL**: Glossary terms are passed via the `context` parameter
+
+### Supported Localization Formats
+
+| Format | Extension | Common Use |
+|--------|-----------|------------|
+| ARB (Application Resource Bundle) | `.arb` | Flutter |
+| Apple Strings | `.strings` | iOS / macOS |
+| Android XML | `.xml` | Android |
+| JSON i18n | `.json` | Web / React / Vue |
+| XLIFF | `.xliff`, `.xlf` | Cross-platform |
+
+### Using Localization Directory (Recommended)
+
+Point the plugin at your existing localization directory. It will auto-detect the format and extract terms:
+
+```ruby
+# Flutter project — use the l10n directory directly
+translate_gpt_release_notes(
+  master_locale: 'en-US',
+  platform: 'ios',
+  glossary_dir: '../lib/l10n'
+)
+
+# iOS project — use .lproj directories
+translate_gpt_release_notes(
+  master_locale: 'en-US',
+  platform: 'ios',
+  glossary_dir: '../MyApp/Resources'
+)
+
+# Android project — use res/values directories
+translate_gpt_release_notes(
+  master_locale: 'en-US',
+  platform: 'android',
+  glossary_dir: '../app/src/main/res'
+)
+```
+
+### Using a Curated JSON Glossary File
+
+For maximum control, create a JSON glossary file with exact translations per locale:
+
+```json
+{
+  "Home Screen": {
+    "de": "Startbildschirm",
+    "fr": "Ecran d'accueil",
+    "es": "Pantalla de inicio",
+    "ja": "ホーム画面"
+  },
+  "Brew Diary": {
+    "de": "Brautagebuch",
+    "fr": "Journal de brassage"
+  }
+}
+```
+
+```ruby
+translate_gpt_release_notes(
+  master_locale: 'en-US',
+  platform: 'ios',
+  glossary: 'path/to/glossary.json'
+)
+```
+
+### Combining Both Sources
+
+You can use both a curated glossary file and a localization directory. The curated file takes priority for overlapping terms:
+
+```ruby
+translate_gpt_release_notes(
+  master_locale: 'en-US',
+  platform: 'ios',
+  glossary: 'fastlane/glossary.json',
+  glossary_dir: '../lib/l10n'
+)
+```
+
+### Fuzzy Matching
+
+The plugin uses smart fuzzy matching to find relevant glossary terms in the source text:
+
+- **Full substring match**: "Home Screen" matches if it appears exactly in the text
+- **Multi-word match**: A term matches if 2 or more significant words (4+ characters, excluding common English stopwords) appear in the text
+- **Filtering**: Terms shorter than 4 characters, longer than 80 characters, or consisting of common stopwords are excluded
+
+This keeps the glossary concise and avoids flooding the AI provider with irrelevant terms.
+
 ## Options
 
 ### Core Options
@@ -181,6 +284,8 @@ translate_gpt_release_notes(
 | `master_locale` | Master language/locale for the source texts | `MASTER_LOCALE` | `en-US` |
 | `platform` | Platform (`ios` or `android`) | `PLATFORM` | `ios` |
 | `context` | Context for translation to improve accuracy | `GPT_CONTEXT` | - |
+| `glossary` | Path to a curated JSON glossary file | `GLOSSARY_PATH` | - |
+| `glossary_dir` | Path to localization files directory for auto-extracting glossary | `GLOSSARY_DIR` | - |
 
 ### Provider-Specific API Keys
 
@@ -378,6 +483,25 @@ export OPENAI_API_KEY='your-key-here'
 **Cause**: Flex tier trades latency for lower cost.
 
 **Solution**: This is expected behavior. If speed is critical, use `service_tier: 'default'` or `service_tier: 'priority'`.
+
+### Glossary Terms Not Being Applied
+
+**Cause**: The fuzzy matching didn't find your terms in the source text.
+
+**Solutions**:
+1. Check that terms are at least 4 characters long
+2. For multi-word terms, at least 2 significant words (4+ chars, non-stopword) must appear in the text
+3. Use `glossary` with a curated JSON file for critical terms
+4. If using `glossary_dir`, verify the localization files contain translations for the target locale
+
+### Too Many Glossary Terms Matched
+
+**Cause**: The localization directory contains many short or generic terms.
+
+**Solutions**:
+1. Use a curated JSON glossary file (`glossary`) with only the most important terms instead of pointing at the full localization directory
+2. Terms longer than 80 characters (full sentences) are automatically excluded
+3. Common English stopwords are excluded from matching
 
 ## Provider Comparison Details
 

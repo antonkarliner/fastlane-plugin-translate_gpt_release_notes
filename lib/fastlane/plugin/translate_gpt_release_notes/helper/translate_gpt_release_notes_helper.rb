@@ -1,5 +1,6 @@
 require 'fastlane_core/ui/ui'
 require_relative 'providers/provider_factory'
+require_relative 'glossary_loader'
 
 module Fastlane
   UI = FastlaneCore::UI unless Fastlane.const_defined?("UI")
@@ -23,12 +24,24 @@ module Fastlane
         unless @provider.valid?
           UI.user_error!("Provider configuration errors: #{@provider.config_errors.join(', ')}")
         end
+
+        # Initialize glossary loader if glossary parameters are provided
+        if params[:glossary] || params[:glossary_dir]
+          @glossary_loader = GlossaryLoader.new(params)
+          UI.message("Glossary sources: #{[params[:glossary] && 'file', params[:glossary_dir] && 'directory'].compact.join(' + ')}")
+        end
       end
 
       # Request a translation from the configured provider
       def translate_text(text, target_locale, _platform)
         source_locale = @params[:master_locale]
-        @provider.translate(text, source_locale, target_locale)
+        glossary_terms = @glossary_loader&.terms_for(text, target_locale) || {}
+
+        if glossary_terms.any?
+          UI.message("Glossary: #{glossary_terms.size} terms matched for #{target_locale}")
+        end
+
+        @provider.translate(text, source_locale, target_locale, glossary_terms: glossary_terms)
       end
 
       # Sleep for a specified number of seconds, displaying a progress bar
