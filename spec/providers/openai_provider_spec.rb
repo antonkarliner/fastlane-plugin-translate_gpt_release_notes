@@ -165,13 +165,15 @@ describe Fastlane::Helper::Providers::OpenAIProvider do
         expect(result).to eq('Hallo Welt')
       end
 
-      it 'builds correct prompt with source and target locales' do
+      it 'builds correct prompt with system and user messages' do
         expect(mock_client).to receive(:chat) do |args|
           messages = args[:parameters][:messages]
-          content = messages.first[:content]
+          system_msg = messages.find { |m| m[:role] == 'system' }
+          user_msg = messages.find { |m| m[:role] == 'user' }
 
-          expect(content).to include('Translate the following text from en-US to de-DE')
-          expect(content).to include('Hello World')
+          expect(system_msg[:content]).to include('Translate the following release notes from en-US to de-DE')
+          expect(system_msg[:content]).to include('Respond with ONLY the translated text')
+          expect(user_msg[:content]).to eq('Hello World')
 
           { 'choices' => [{ 'message' => { 'content' => 'Translated' } }] }
         end
@@ -252,13 +254,13 @@ describe Fastlane::Helper::Providers::OpenAIProvider do
       let(:android_params) { valid_params.merge(platform: 'android') }
       let(:provider) { described_class.new(android_params) }
 
-      it 'includes Android character limit in prompt' do
+      it 'includes Android character limit in system message' do
         expect(mock_client).to receive(:chat) do |args|
           messages = args[:parameters][:messages]
-          content = messages.first[:content]
+          system_content = messages.find { |m| m[:role] == 'system' }[:content]
 
-          expect(content).to include('500 characters')
-          expect(content).to include('Google Play Store')
+          expect(system_content).to include('500 characters')
+          expect(system_content).to include('Google Play Store')
 
           { 'choices' => [{ 'message' => { 'content' => 'Translated' } }] }
         end
@@ -271,17 +273,50 @@ describe Fastlane::Helper::Providers::OpenAIProvider do
       let(:context_params) { valid_params.merge(context: 'This is a mobile app update') }
       let(:provider) { described_class.new(context_params) }
 
-      it 'includes context in prompt' do
+      it 'includes context in system message' do
         expect(mock_client).to receive(:chat) do |args|
           messages = args[:parameters][:messages]
-          content = messages.first[:content]
+          system_content = messages.find { |m| m[:role] == 'system' }[:content]
 
-          expect(content).to include('Context: This is a mobile app update')
+          expect(system_content).to include('Context: This is a mobile app update')
 
           { 'choices' => [{ 'message' => { 'content' => 'Translated' } }] }
         end
 
         provider.translate('Hello World', 'en-US', 'de-DE')
+      end
+    end
+
+    context 'with glossary terms' do
+      it 'includes glossary terms in system message' do
+        expect(mock_client).to receive(:chat) do |args|
+          messages = args[:parameters][:messages]
+          system_content = messages.find { |m| m[:role] == 'system' }[:content]
+
+          expect(system_content).to include('glossary for consistent terminology')
+          expect(system_content).to include('"Home Screen" -> "Ecran d\'accueil"')
+          expect(system_content).to include('"Settings" -> "Parametres"')
+
+          { 'choices' => [{ 'message' => { 'content' => 'Translated' } }] }
+        end
+
+        provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {
+          "Home Screen" => "Ecran d'accueil",
+          "Settings" => "Parametres"
+        })
+      end
+
+      it 'does not include glossary section when terms are empty' do
+        expect(mock_client).to receive(:chat) do |args|
+          messages = args[:parameters][:messages]
+          system_content = messages.find { |m| m[:role] == 'system' }[:content]
+
+          expect(system_content).not_to include('glossary')
+
+          { 'choices' => [{ 'message' => { 'content' => 'Translated' } }] }
+        end
+
+        provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {})
       end
     end
 

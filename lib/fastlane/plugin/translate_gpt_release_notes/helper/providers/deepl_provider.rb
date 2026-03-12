@@ -89,8 +89,9 @@ module Fastlane
         # @param text [String] The text to translate
         # @param source_locale [String] Source language code (e.g., 'en-US', 'de-DE')
         # @param target_locale [String] Target language code (e.g., 'es', 'fr')
+        # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String, nil] Translated text or nil on error
-        def translate(text, source_locale, target_locale)
+        def translate(text, source_locale, target_locale, glossary_terms: {})
           # DeepL uses ISO 639-1 language codes (2-letter codes)
           # Convert locales like 'en-US' to 'EN'
           source_lang = normalize_locale(source_locale)
@@ -103,10 +104,16 @@ module Fastlane
           formality = @params[:formality].to_s.strip
           options[:formality] = formality unless formality.empty? || formality == 'default'
 
-          # DeepL supports context parameter for better translations
-          if @params[:context] && !@params[:context].empty?
-            options[:context] = @params[:context]
+          # Build context from user-provided context and glossary terms
+          context_parts = []
+          context_parts << @params[:context] if @params[:context] && !@params[:context].empty?
+
+          if glossary_terms && !glossary_terms.empty?
+            glossary_str = glossary_terms.map { |s, t| "#{s} = #{t}" }.join("; ")
+            context_parts << "Glossary: #{glossary_str}"
           end
+
+          options[:context] = context_parts.join(". ") unless context_parts.empty?
 
           # Make API call
           result = DeepL.translate(text, source_lang, target_lang, options)

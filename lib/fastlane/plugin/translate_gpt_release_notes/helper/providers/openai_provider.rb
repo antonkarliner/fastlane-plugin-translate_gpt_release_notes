@@ -72,22 +72,31 @@ module Fastlane
         end
 
         # Translates text from source locale to target locale using OpenAI's API.
+        # Uses a system message for instructions and a user message for the text,
+        # which improves instruction following for glossary terms and output format.
         #
         # @param text [String] The text to translate
         # @param source_locale [String] Source language code (e.g., 'en', 'de')
         # @param target_locale [String] Target language code (e.g., 'es', 'fr')
+        # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String, nil] Translated text or nil on error
-        def translate(text, source_locale, target_locale)
-          # Build prompt using inherited build_prompt method
-          prompt = build_prompt(text, source_locale, target_locale)
+        def translate(text, source_locale, target_locale, glossary_terms: {})
+          # Build system instruction and user content separately for better results
+          system_instruction = build_system_instruction(source_locale, target_locale, glossary_terms: glossary_terms)
+          user_content = text
 
-          # Add Android limitations if needed
-          prompt = apply_android_limitations(prompt) if @params[:platform] == 'android'
+          # Add Android limitations to system instruction if needed
+          if @params[:platform] == 'android'
+            system_instruction += "\n\n" + android_limitation_instruction
+          end
 
-          # Build parameters hash
+          # Build parameters hash with separate system and user messages
           parameters = {
             model: @params[:model_name] || DEFAULT_MODEL,
-            messages: [{ role: 'user', content: prompt }],
+            messages: [
+              { role: 'system', content: system_instruction },
+              { role: 'user', content: user_content }
+            ],
             temperature: (@params[:temperature] || DEFAULT_TEMPERATURE).to_f
           }
 

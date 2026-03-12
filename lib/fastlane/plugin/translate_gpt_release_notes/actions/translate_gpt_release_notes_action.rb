@@ -227,6 +227,28 @@ module Fastlane
             description: "Context for translation to improve accuracy",
             optional: true,
             type: String
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :glossary,
+            env_name: "GLOSSARY_PATH",
+            description: "Path to a JSON glossary file with term translations per locale",
+            optional: true,
+            type: String,
+            verify_block: proc do |value|
+              next if value.nil? || value.to_s.strip.empty?
+              UI.user_error!("Glossary file not found: #{value}") unless File.exist?(value)
+            end
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :glossary_dir,
+            env_name: "GLOSSARY_DIR",
+            description: "Path to directory with localization files (ARB, .strings, .xml, .json, .xliff) for auto-extracting glossary",
+            optional: true,
+            type: String,
+            verify_block: proc do |value|
+              next if value.nil? || value.to_s.strip.empty?
+              UI.user_error!("Glossary directory not found: #{value}") unless Dir.exist?(value)
+            end
           )
         ]
       end

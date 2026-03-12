@@ -26,8 +26,9 @@ module Fastlane
         # @param text [String] The text to translate
         # @param source_locale [String] Source language code (e.g., 'en', 'de')
         # @param target_locale [String] Target language code (e.g., 'es', 'fr')
+        # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String, nil] Translated text or nil on error
-        def translate(text, source_locale, target_locale)
+        def translate(text, source_locale, target_locale, glossary_terms: {})
           raise NotImplementedError, "#{self.class.name} must implement #translate"
         end
 
@@ -83,19 +84,20 @@ module Fastlane
         protected
 
         # Builds a translation prompt for the AI provider.
-        # Includes context about platform limitations if applicable.
+        # Structure: instructions first, context/glossary in the middle, text to translate last.
+        # This ordering ensures the model reads all constraints before processing the text.
         #
         # @param text [String] The text to translate
         # @param source_locale [String] Source language code
         # @param target_locale [String] Target language code
+        # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String] The formatted prompt
-        def build_prompt(text, source_locale, target_locale)
+        def build_prompt(text, source_locale, target_locale, glossary_terms: {})
           prompt_parts = []
 
-          # Base translation instruction
-          prompt_parts << "Translate the following text from #{source_locale} to #{target_locale}:"
-          prompt_parts << ""
-          prompt_parts << "\"#{text}\""
+          # Instructions first: role, task, and output format
+          prompt_parts << "Translate the following release notes from #{source_locale} to #{target_locale}."
+          prompt_parts << "Respond with ONLY the translated text. Preserve the original formatting, line breaks, and bullet points."
 
           # Add context if provided
           if @params[:context]
@@ -103,13 +105,60 @@ module Fastlane
             prompt_parts << "Context: #{@params[:context]}"
           end
 
-          # Apply Android limitations if specified
-          if @params[:android_limitations]
+          # Add glossary terms before the text so the model reads them first
+          unless glossary_terms.nil? || glossary_terms.empty?
             prompt_parts << ""
-            prompt_parts << apply_android_limitations("")
+            prompt_parts << "Use the following glossary for consistent terminology. Apply these exact translations for the specified terms:"
+            glossary_terms.each do |source_term, target_term|
+              prompt_parts << "- \"#{source_term}\" -> \"#{target_term}\""
+            end
           end
 
+          # Text to translate last, so the model processes it with full context
+          prompt_parts << ""
+          prompt_parts << "Text to translate:"
+          prompt_parts << text
+
           prompt_parts.join("\n")
+        end
+
+        # Builds a system instruction for providers that support separate system/user messages.
+        # Contains all translation rules, context, and glossary — but NOT the text to translate.
+        # Used by OpenAI (system message). Other providers use build_prompt which combines everything.
+        #
+        # @param source_locale [String] Source language code
+        # @param target_locale [String] Target language code
+        # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
+        # @return [String] The system instruction
+        def build_system_instruction(source_locale, target_locale, glossary_terms: {})
+          parts = []
+
+          parts << "Translate the following release notes from #{source_locale} to #{target_locale}."
+          parts << "Respond with ONLY the translated text. Preserve the original formatting, line breaks, and bullet points."
+
+          if @params[:context]
+            parts << ""
+            parts << "Context: #{@params[:context]}"
+          end
+
+          unless glossary_terms.nil? || glossary_terms.empty?
+            parts << ""
+            parts << "Use the following glossary for consistent terminology. Apply these exact translations for the specified terms:"
+            glossary_terms.each do |source_term, target_term|
+              parts << "- \"#{source_term}\" -> \"#{target_term}\""
+            end
+          end
+
+          parts.join("\n")
+        end
+
+        # Returns the Android character limitation instruction as a standalone string.
+        # Used by providers that build messages separately (e.g., OpenAI with system/user split).
+        #
+        # @return [String] The Android limitation instruction
+        def android_limitation_instruction
+          "IMPORTANT: The translated text must not exceed #{ANDROID_CHAR_LIMIT} characters " \
+          "(Google Play Store release notes limit). Provide a concise translation."
         end
 
         # Adds Android character limit constraint to the prompt.
@@ -118,8 +167,7 @@ module Fastlane
         # @param prompt [String] The existing prompt to append to
         # @return [String] The prompt with limitation instruction appended
         def apply_android_limitations(prompt)
-          prompt + "IMPORTANT: The translated text must not exceed #{ANDROID_CHAR_LIMIT} characters " \
-          "(Google Play Store release notes limit). Please provide a concise translation."
+          prompt + android_limitation_instruction
         end
 
         # Adds a configuration error to the errors list.

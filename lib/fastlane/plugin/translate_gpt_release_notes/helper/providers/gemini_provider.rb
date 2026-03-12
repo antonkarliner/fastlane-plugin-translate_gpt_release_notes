@@ -76,13 +76,14 @@ module Fastlane
         # @param text [String] The text to translate
         # @param source_locale [String] Source language code (e.g., 'en', 'de')
         # @param target_locale [String] Target language code (e.g., 'es', 'fr')
+        # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String, nil] Translated text or nil on error
-        def translate(text, source_locale, target_locale)
-          # Build prompt using inherited method
-          prompt = build_prompt(text, source_locale, target_locale)
+        def translate(text, source_locale, target_locale, glossary_terms: {})
+          # Build prompt using inherited method (includes instructions, glossary, and text)
+          prompt = build_prompt(text, source_locale, target_locale, glossary_terms: glossary_terms)
 
-          # Add Android limitations if needed
-          prompt = apply_android_limitations(prompt) if @params[:platform] == 'android'
+          # Add Android limitations if needed (appended after the text)
+          prompt += "\n\n" + android_limitation_instruction if @params[:platform] == 'android'
 
           # Make API call
           result = make_api_request(prompt)

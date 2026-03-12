@@ -143,7 +143,7 @@ describe Fastlane::Helper::Providers::GeminiProvider do
           body = JSON.parse(request.body)
           text = body['contents'].first['parts']['text']
 
-          expect(text).to include('Translate the following text from en-US to de-DE')
+          expect(text).to include('Translate the following release notes from en-US to de-DE')
           expect(text).to include('Hello World')
 
           mock_response
@@ -195,6 +195,37 @@ describe Fastlane::Helper::Providers::GeminiProvider do
         end
 
         provider.translate('Hello', 'en', 'de')
+      end
+    end
+
+    context 'with glossary terms' do
+      it 'includes glossary terms in prompt' do
+        expect(mock_http).to receive(:request) do |request|
+          body = JSON.parse(request.body)
+          text = body['contents'].first['parts']['text']
+
+          expect(text).to include('glossary for consistent terminology')
+          expect(text).to include('"Settings" -> "Parametres"')
+
+          mock_response
+        end
+
+        provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {
+          "Settings" => "Parametres"
+        })
+      end
+
+      it 'does not include glossary section when terms are empty' do
+        expect(mock_http).to receive(:request) do |request|
+          body = JSON.parse(request.body)
+          text = body['contents'].first['parts']['text']
+
+          expect(text).not_to include('glossary')
+
+          mock_response
+        end
+
+        provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {})
       end
     end
 
