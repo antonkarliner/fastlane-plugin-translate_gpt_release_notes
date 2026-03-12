@@ -1,9 +1,10 @@
 lib = File.expand_path("lib", __dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require "fastlane/plugin/translate_gpt_release_notes/version"
 
 Gem::Specification.new do |spec|
   spec.name          = 'fastlane-plugin-translate_gpt_release_notes'
-  spec.version       = '0.3.0'
+  spec.version       = Fastlane::TranslateGptReleaseNotes::VERSION
   spec.author        = 'Anton Karliner'
   spec.email         = 'anton@karliner.pro'
 

@@ -63,8 +63,9 @@ module Fastlane
             return nil
           end
 
-          # Merge API key into params
-          provider_params = params.merge(api_token: api_key)
+          # Merge API key into params (handle FastlaneCore::Configuration objects)
+          params_hash = params.is_a?(Hash) ? params : params.values
+          provider_params = params_hash.merge(api_token: api_key)
 
           provider_class.new(provider_params)
         end
@@ -89,7 +90,8 @@ module Fastlane
             return nil
           end
 
-          provider_params = params.merge(api_token: api_key)
+          params_hash = params.is_a?(Hash) ? params : params.values
+          provider_params = params_hash.merge(api_token: api_key)
           provider_class.new(provider_params)
         end
 
