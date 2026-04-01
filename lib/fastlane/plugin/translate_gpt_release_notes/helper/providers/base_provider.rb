@@ -92,12 +92,18 @@ module Fastlane
         # @param target_locale [String] Target language code
         # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String] The formatted prompt
-        def build_prompt(text, source_locale, target_locale, glossary_terms: {})
+        def build_prompt(text, source_locale, target_locale, glossary_terms: {}, platform: nil)
           prompt_parts = []
 
           # Instructions first: role, task, and output format
           prompt_parts << "Translate the following release notes from #{source_locale} to #{target_locale}."
           prompt_parts << "Respond with ONLY the translated text. Preserve the original formatting, line breaks, and bullet points."
+
+          # Android character limit is a hard constraint — include it with core instructions
+          if platform == 'android'
+            prompt_parts << ""
+            prompt_parts << android_limitation_instruction
+          end
 
           # Add context if provided
           if @params[:context]
@@ -108,7 +114,7 @@ module Fastlane
           # Add glossary terms before the text so the model reads them first
           unless glossary_terms.nil? || glossary_terms.empty?
             prompt_parts << ""
-            prompt_parts << "Use the following glossary for consistent terminology. Apply these exact translations for the specified terms:"
+            prompt_parts << "Use the following glossary for consistent terminology. These are reference translations — apply appropriate grammatical forms (declension, conjugation, agreement) as needed for natural-sounding language in the target language. Do not copy verbatim if grammar requires a different form:"
             glossary_terms.each do |source_term, target_term|
               prompt_parts << "- \"#{source_term}\" -> \"#{target_term}\""
             end
@@ -130,11 +136,17 @@ module Fastlane
         # @param target_locale [String] Target language code
         # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String] The system instruction
-        def build_system_instruction(source_locale, target_locale, glossary_terms: {})
+        def build_system_instruction(source_locale, target_locale, glossary_terms: {}, platform: nil)
           parts = []
 
           parts << "Translate the following release notes from #{source_locale} to #{target_locale}."
           parts << "Respond with ONLY the translated text. Preserve the original formatting, line breaks, and bullet points."
+
+          # Android character limit is a hard constraint — include it with core instructions
+          if platform == 'android'
+            parts << ""
+            parts << android_limitation_instruction
+          end
 
           if @params[:context]
             parts << ""
@@ -143,7 +155,7 @@ module Fastlane
 
           unless glossary_terms.nil? || glossary_terms.empty?
             parts << ""
-            parts << "Use the following glossary for consistent terminology. Apply these exact translations for the specified terms:"
+            parts << "Use the following glossary for consistent terminology. These are reference translations — apply appropriate grammatical forms (declension, conjugation, agreement) as needed for natural-sounding language in the target language. Do not copy verbatim if grammar requires a different form:"
             glossary_terms.each do |source_term, target_term|
               parts << "- \"#{source_term}\" -> \"#{target_term}\""
             end
@@ -157,17 +169,21 @@ module Fastlane
         #
         # @return [String] The Android limitation instruction
         def android_limitation_instruction
-          "IMPORTANT: The translated text must not exceed #{ANDROID_CHAR_LIMIT} characters " \
-          "(Google Play Store release notes limit). Provide a concise translation."
+          "CRITICAL: Google Play Store enforces a hard #{ANDROID_CHAR_LIMIT}-character limit for release notes. " \
+          "Your translation MUST be #{ANDROID_CHAR_LIMIT} characters or fewer. " \
+          "Count carefully and shorten or summarize if needed to stay within this limit."
         end
 
-        # Adds Android character limit constraint to the prompt.
-        # Google Play has a 500 character limit for release notes.
+        # Truncates the translated text to the Android character limit if exceeded.
+        # Logs a warning when truncation occurs.
         #
-        # @param prompt [String] The existing prompt to append to
-        # @return [String] The prompt with limitation instruction appended
-        def apply_android_limitations(prompt)
-          prompt + android_limitation_instruction
+        # @param text [String, nil] The translated text
+        # @return [String, nil] The text, truncated to ANDROID_CHAR_LIMIT if necessary
+        def enforce_android_limit(text)
+          return text unless @params[:platform] == 'android' && text && text.length > ANDROID_CHAR_LIMIT
+
+          UI.warning("Translation exceeds #{ANDROID_CHAR_LIMIT} characters (#{text.length}), truncating...")
+          text[0...ANDROID_CHAR_LIMIT]
         end
 
         # Adds a configuration error to the errors list.

@@ -118,15 +118,7 @@ module Fastlane
           # Make API call
           result = DeepL.translate(text, source_lang, target_lang, options)
 
-          translated = result.text
-
-          # Handle Android 500 character limit
-          if @params[:platform] == 'android' && translated.length > 500
-            UI.warning "DeepL translation exceeds 500 characters (#{translated.length}), truncating..."
-            translated = translated[0...500]
-          end
-
-          translated
+          enforce_android_limit(result.text)
         rescue DeepL::Exceptions::RequestError => e
           UI.error "DeepL API error: #{e.message}"
           nil

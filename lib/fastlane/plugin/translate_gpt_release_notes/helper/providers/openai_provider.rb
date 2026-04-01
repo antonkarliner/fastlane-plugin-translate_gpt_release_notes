@@ -82,13 +82,12 @@ module Fastlane
         # @return [String, nil] Translated text or nil on error
         def translate(text, source_locale, target_locale, glossary_terms: {})
           # Build system instruction and user content separately for better results
-          system_instruction = build_system_instruction(source_locale, target_locale, glossary_terms: glossary_terms)
+          system_instruction = build_system_instruction(
+            source_locale, target_locale,
+            glossary_terms: glossary_terms,
+            platform: @params[:platform]
+          )
           user_content = text
-
-          # Add Android limitations to system instruction if needed
-          if @params[:platform] == 'android'
-            system_instruction += "\n\n" + android_limitation_instruction
-          end
 
           # Build parameters hash with separate system and user messages
           parameters = {
@@ -112,7 +111,7 @@ module Fastlane
             UI.error "OpenAI translation error: #{error}"
             nil
           else
-            response.dig('choices', 0, 'message', 'content')&.strip
+            enforce_android_limit(response.dig('choices', 0, 'message', 'content')&.strip)
           end
         rescue StandardError => e
           UI.error "OpenAI provider error: #{e.message}"

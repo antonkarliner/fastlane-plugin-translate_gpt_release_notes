@@ -182,7 +182,8 @@ The glossary feature ensures consistent translation of app-specific terms (scree
 1. The plugin loads glossary terms from a JSON file and/or a directory of localization files
 2. Before each translation, it fuzzy-matches terms from the glossary against the source text
 3. Only relevant terms are included in the translation prompt (keeping it concise)
-4. Each provider uses the glossary differently:
+4. The AI is instructed to use glossary terms as **reference translations** and apply appropriate grammatical forms (declension, conjugation, agreement) as needed — so translations sound natural in inflected languages like Russian, German, or Finnish rather than copying terms verbatim
+5. Each provider uses the glossary differently:
    - **OpenAI**: Glossary terms are sent as a system message for strong instruction following
    - **Anthropic / Gemini**: Glossary terms are included in the translation prompt
    - **DeepL**: Glossary terms are passed via the `context` parameter
@@ -406,10 +407,10 @@ translate_gpt_release_notes(
 
 ### Android 500 Character Limit
 
-Android has a limit of 500 characters for changelogs. The plugin handles this in two ways:
+Android has a hard limit of 500 characters for changelogs. The plugin enforces this in two layers:
 
-1. **AI Providers (OpenAI, Anthropic, Gemini)**: The character limit is included in the translation prompt, asking the AI to stay within the limit
-2. **DeepL**: Translations are truncated to 500 characters with a warning if they exceed the limit
+1. **Prompt constraint**: For AI providers, the limit is included near the top of the prompt (alongside core instructions) with explicit wording that the model must count carefully and shorten or summarize if needed. This positions it as a hard constraint rather than an afterthought.
+2. **Safety-net truncation**: All providers (including DeepL) truncate the result and log a warning if the model still exceeds 500 characters despite the prompt.
 
 If you frequently hit the limit, consider shortening your master locale changelog.
 
@@ -465,9 +466,9 @@ export OPENAI_API_KEY='your-key-here'
 **Cause**: The translated text is longer than 500 characters.
 
 **Solutions**:
-1. Shorten your source changelog
-2. For DeepL, translations are automatically truncated
-3. For AI providers, the prompt includes the limit but compliance isn't guaranteed
+1. Shorten your source changelog — the most reliable fix
+2. All providers will truncate automatically if the limit is exceeded (with a warning), but this may cut mid-sentence
+3. For AI providers, the prompt strongly instructs the model to stay within the limit and shorten if needed
 
 ### API Timeout Errors
 

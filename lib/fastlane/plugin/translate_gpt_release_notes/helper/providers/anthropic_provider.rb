@@ -83,10 +83,11 @@ module Fastlane
         # @return [String, nil] Translated text or nil on error
         def translate(text, source_locale, target_locale, glossary_terms: {})
           # Build prompt using inherited method (includes instructions, glossary, and text)
-          prompt = build_prompt(text, source_locale, target_locale, glossary_terms: glossary_terms)
-
-          # Add Android limitations if needed (appended after the text)
-          prompt += "\n\n" + android_limitation_instruction if @params[:platform] == 'android'
+          prompt = build_prompt(
+            text, source_locale, target_locale,
+            glossary_terms: glossary_terms,
+            platform: @params[:platform]
+          )
 
           # Make API call using ruby-anthropic gem API
           response = @client.complete(
@@ -97,7 +98,7 @@ module Fastlane
           )
 
           # Extract text from response
-          extract_text_from_response(response)
+          enforce_android_limit(extract_text_from_response(response))
         rescue StandardError => e
           UI.error "Anthropic provider error: #{e.message}"
           nil

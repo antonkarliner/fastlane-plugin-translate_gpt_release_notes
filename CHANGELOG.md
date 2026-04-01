@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-04-01
+
+### Improved
+
+#### Translation Prompt Quality
+- **Glossary now allows grammatical adaptation**: Glossary terms are treated as reference translations rather than verbatim strings. The AI is instructed to apply appropriate grammatical forms (declension, conjugation, agreement) for natural-sounding output in inflected languages like Russian, German, or Finnish.
+- **Stronger Android 500-character enforcement**: The character limit constraint is now positioned at the top of the prompt (alongside core instructions) rather than appended after the text to translate — ensuring the model treats it as a hard constraint, not an afterthought. Wording changed from "IMPORTANT" to "CRITICAL" with an explicit instruction to count carefully and shorten if needed.
+- **Safety-net truncation for all providers**: All providers (OpenAI, Anthropic, Gemini, DeepL) now share a common `enforce_android_limit` method that truncates and warns if the model still exceeds 500 characters despite the prompt instruction.
+
 ## [0.3.1] - 2026-03-12
 
 ### Fixed
