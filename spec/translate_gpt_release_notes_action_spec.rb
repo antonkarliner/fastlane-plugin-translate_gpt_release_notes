@@ -176,11 +176,8 @@ describe Fastlane::Actions::TranslateGptReleaseNotesAction do
       end
     end
 
-    context 'when a translation fails (provider returns nil)' do
-      # CHARACTERIZATION OF CURRENT BEHAVIOR - this is the data-loss bug that
-      # plan 003 fixes. When 003 lands, this example must be updated to assert the
-      # file is left untouched and the run is NOT marked successful.
-      it 'currently overwrites the target file with an empty string' do
+    context 'when all translations fail (provider returns nil)' do
+      it 'leaves existing target files untouched and does not record a successful run' do
         allow(Fastlane::UI).to receive(:message)
         allow(Fastlane::UI).to receive(:warning)
         allow(Fastlane::UI).to receive(:error)
@@ -194,7 +191,31 @@ describe Fastlane::Actions::TranslateGptReleaseNotesAction do
             provider: 'openai', platform: 'ios', master_locale: 'en-US', api_token: 'x'
           )
 
-          expect(File.read('fastlane/metadata/fr-FR/release_notes.txt')).to eq('')
+          expect(File.read('fastlane/metadata/fr-FR/release_notes.txt')).to eq('bonnes notes existantes')
+          expect(File.exist?('last_successful_run.txt')).to be false
+        end
+      end
+    end
+
+    context 'when some translations fail' do
+      it 'writes the successful locale, preserves the failed locale, and records the run' do
+        allow(Fastlane::UI).to receive(:message)
+        allow(Fastlane::UI).to receive(:warning)
+        allow(Fastlane::UI).to receive(:error)
+        allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
+          .to receive(:translate_text) do |_inst, _text, locale, _platform|
+            locale == 'fr-FR' ? 'notes traduites' : nil
+          end
+
+        with_ios_metadata do
+          File.write('fastlane/metadata/de-DE/release_notes.txt', 'alte notizen')
+
+          Fastlane::Actions::TranslateGptReleaseNotesAction.run(
+            provider: 'openai', platform: 'ios', master_locale: 'en-US', api_token: 'x'
+          )
+
+          expect(File.read('fastlane/metadata/fr-FR/release_notes.txt')).to eq('notes traduites')
+          expect(File.read('fastlane/metadata/de-DE/release_notes.txt')).to eq('alte notizen')
           expect(File.exist?('last_successful_run.txt')).to be true
         end
       end

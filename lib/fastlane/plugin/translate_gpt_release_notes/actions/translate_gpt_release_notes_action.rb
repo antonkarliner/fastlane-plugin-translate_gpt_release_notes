@@ -59,8 +59,16 @@ module Fastlane
 
         update_translated_texts(base_directory, translated_texts, is_ios, params)
 
-        # Store the current time as the last run time
-        File.write(last_run_file, Time.now.to_i)
+        # Only mark the run successful if at least one translation actually succeeded;
+        # otherwise a transient failure would suppress the next run's retry.
+        any_success = translated_texts.any? do |locale, text|
+          locale != params[:master_locale] && !translation_empty?(text)
+        end
+        if any_success
+          File.write(last_run_file, Time.now.to_i)
+        else
+          UI.error("No translations succeeded; not updating #{last_run_file} so the next run will retry.")
+        end
       end
 
       def self.list_locales(base_directory)
@@ -93,17 +101,26 @@ module Fastlane
         Dir[File.join(directory, '*.txt')].max_by { |f| File.basename(f, '.txt').to_i }.split('/').last
       end      
 
+      def self.translation_empty?(text)
+        text.nil? || text.to_s.strip.empty?
+      end
+
       def self.update_translated_texts(base_directory, translated_texts, is_ios, params)
         translated_texts.each do |locale, text|
           next if locale == params[:master_locale]  # Skip master locale
-      
+
+          if translation_empty?(text)
+            UI.warning("Skipping #{locale}: translation failed or returned empty; existing file left unchanged.")
+            next
+          end
+
           target_path = is_ios ? File.join(base_directory, locale) : File.join(base_directory, locale, 'changelogs')
-      
+
           # Ensure target path exists or create it
           FileUtils.mkdir_p(target_path) unless Dir.exist?(target_path)
-      
+
           filename = is_ios ? 'release_notes.txt' : highest_numbered_file(File.join(base_directory, params[:master_locale], 'changelogs'))
-      
+
           # Write the translated text to the file
           File.write(File.join(target_path, filename), text)
         end
