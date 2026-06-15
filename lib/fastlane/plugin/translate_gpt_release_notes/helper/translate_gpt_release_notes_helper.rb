@@ -44,51 +44,6 @@ module Fastlane
         @provider.translate(text, source_locale, target_locale, glossary_terms: glossary_terms)
       end
 
-      # Sleep for a specified number of seconds, displaying a progress bar
-      def wait(seconds = @params[:request_timeout])
-        sleep_time = 0
-        while sleep_time < seconds
-          percent_complete = (sleep_time.to_f / seconds.to_f) * 100.0
-          progress_bar_width = 20
-          completed_width = (progress_bar_width * percent_complete / 100.0).round
-          remaining_width = progress_bar_width - completed_width
-          print "\rTimeout ["
-          print Colorizer::code(:green)
-          print "=" * completed_width
-          print " " * remaining_width
-          print Colorizer::code(:reset)
-          print "]"
-          print " %.2f%%" % percent_complete
-          $stdout.flush
-          sleep(1)
-          sleep_time += 1
-        end
-        print "\r"
-        $stdout.flush
-      end
-    end
-
-    # Helper class for bash colors
-    class Colorizer
-      COLORS = {
-        black:   30,
-        red:     31,
-        green:   32,
-        yellow:  33,
-        blue:    34,
-        magenta: 35,
-        cyan:    36,
-        white:   37,
-        reset:   0,
-      }
-
-      def self.colorize(text, color)
-        color_code = COLORS[color.to_sym]
-        "\e[#{color_code}m#{text}\e[0m"
-      end
-      def self.code(color)
-        "\e[#{COLORS[color.to_sym]}m"
-      end
     end
   end
 end
