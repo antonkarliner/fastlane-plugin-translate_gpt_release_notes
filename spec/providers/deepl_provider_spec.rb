@@ -383,5 +383,40 @@ describe Fastlane::Helper::Providers::DeepLProvider do
       provider = described_class.new(valid_params)
       provider.translate('Test', 'FR-FR', 'IT-IT')
     end
+
+    context 'target language normalization' do
+      let(:provider) { described_class.new(valid_params) }
+      let(:translated_result) { instance_double(DeepL::Resources::Text, text: 'translated') }
+
+      it 'uses EN-US for a bare en target' do
+        expect(DeepL).to receive(:translate).with('Hello', 'DE', 'EN-US', anything).and_return(translated_result)
+        provider.translate('Hello', 'de-DE', 'en')
+      end
+
+      it 'uses EN-GB for an en-GB target' do
+        expect(DeepL).to receive(:translate).with('Hello', 'DE', 'EN-GB', anything).and_return(translated_result)
+        provider.translate('Hello', 'de-DE', 'en-GB')
+      end
+
+      it 'uses EN-US for an en-US target' do
+        expect(DeepL).to receive(:translate).with('Hello', 'DE', 'EN-US', anything).and_return(translated_result)
+        provider.translate('Hello', 'de-DE', 'en-US')
+      end
+
+      it 'uses PT-PT for a bare pt target' do
+        expect(DeepL).to receive(:translate).with('Hello', 'EN', 'PT-PT', anything).and_return(translated_result)
+        provider.translate('Hello', 'en-US', 'pt')
+      end
+
+      it 'uses PT-BR for a pt-BR target' do
+        expect(DeepL).to receive(:translate).with('Hello', 'EN', 'PT-BR', anything).and_return(translated_result)
+        provider.translate('Hello', 'en-US', 'pt-BR')
+      end
+
+      it 'uses a bare code for non-region languages' do
+        expect(DeepL).to receive(:translate).with('Hello', 'EN', 'JA', anything).and_return(translated_result)
+        provider.translate('Hello', 'en-US', 'ja-JP')
+      end
+    end
   end
 end

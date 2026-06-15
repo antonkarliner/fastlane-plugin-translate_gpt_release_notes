@@ -92,10 +92,8 @@ module Fastlane
         # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String, nil] Translated text or nil on error
         def translate(text, source_locale, target_locale, glossary_terms: {})
-          # DeepL uses ISO 639-1 language codes (2-letter codes)
-          # Convert locales like 'en-US' to 'EN'
-          source_lang = normalize_locale(source_locale)
-          target_lang = normalize_locale(target_locale)
+          source_lang = normalize_source_locale(source_locale)
+          target_lang = normalize_target_locale(target_locale)
 
           # Build options hash
           options = {}
@@ -129,14 +127,26 @@ module Fastlane
 
         private
 
-        # Normalizes locale codes for DeepL API.
-        # DeepL uses 2-letter ISO 639-1 codes (e.g., 'EN', 'DE', 'FR').
-        # Converts 'en-US' → 'EN', 'de-DE' → 'DE'.
-        #
-        # @param locale [String] The locale string to normalize
-        # @return [String] The normalized 2-letter language code
-        def normalize_locale(locale)
-          locale.to_s.split('-').first.upcase
+        # Normalizes a locale for use as the DeepL SOURCE language.
+        # DeepL source accepts only the bare 2-letter ISO 639-1 code.
+        # 'en-US' -> 'EN', 'de-DE' -> 'DE'.
+        def normalize_source_locale(locale)
+          locale.to_s.split(/[-_]/).first.to_s.upcase
+        end
+
+        # Normalizes a locale for use as the DeepL TARGET language.
+        # DeepL requires a region for English ('EN-US'/'EN-GB') and Portuguese
+        # ('PT-PT'/'PT-BR'); bare 'EN'/'PT' are deprecated targets and rejected.
+        # All other targets use the bare 2-letter code.
+        def normalize_target_locale(locale)
+          parts = locale.to_s.split(/[-_]/)
+          lang = parts[0].to_s.downcase
+          region = parts[1].to_s.upcase
+          case lang
+          when 'en' then region == 'GB' ? 'EN-GB' : 'EN-US'
+          when 'pt' then region == 'BR' ? 'PT-BR' : 'PT-PT'
+          else lang.upcase
+          end
         end
       end
     end
