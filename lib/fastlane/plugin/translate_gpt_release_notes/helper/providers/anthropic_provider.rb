@@ -82,22 +82,12 @@ module Fastlane
         # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String, nil] Translated text or nil on error
         def translate(text, source_locale, target_locale, glossary_terms: {})
-          # Build prompt using inherited method (includes instructions, glossary, and text)
-          prompt = build_prompt(
-            text, source_locale, target_locale,
+          system_instruction = build_system_instruction(
+            source_locale, target_locale,
             glossary_terms: glossary_terms,
             platform: @params[:platform]
           )
-
-          # Make API call using ruby-anthropic gem API
-          response = @client.complete(
-            model: @params[:model_name] || DEFAULT_MODEL,
-            max_tokens_to_sample: (@params[:max_tokens] || DEFAULT_MAX_TOKENS).to_i,
-            temperature: (@params[:temperature] || DEFAULT_TEMPERATURE).to_f,
-            prompt: "\n\nHuman: #{prompt}\n\nAssistant:"
-          )
-
-          # Extract text from response
+          response = @client.messages.create(build_create_params(system_instruction, text))
           enforce_android_limit(extract_text_from_response(response))
         rescue StandardError => e
           UI.error "Anthropic provider error: #{e.message}"
@@ -106,14 +96,22 @@ module Fastlane
 
         private
 
-        # Extracts translated text from the Anthropic API response
-        #
-        # @param response [Hash] The API response hash
-        # @return [String, nil] The translated text or nil
-        def extract_text_from_response(response)
-          return nil if response.nil?
+        def build_create_params(system_instruction, text)
+          {
+            model: @params[:model_name] || DEFAULT_MODEL,
+            max_tokens: (@params[:max_tokens] || DEFAULT_MAX_TOKENS).to_i,
+            temperature: (@params[:temperature] || DEFAULT_TEMPERATURE).to_f,
+            system_: system_instruction,
+            messages: [{ role: 'user', content: text }]
+          }
+        end
 
-          response['completion']&.strip
+        def extract_text_from_response(response)
+          content = response&.content
+          return nil if content.to_a.empty?
+
+          text = content.filter_map { |b| b.text if b.type == :text }.join.strip
+          text.empty? ? nil : text
         end
       end
     end

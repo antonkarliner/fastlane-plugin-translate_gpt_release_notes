@@ -111,39 +111,41 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
 
   describe '#translate' do
     let(:provider) { described_class.new(valid_params) }
+    let(:messages_resource) { double('Anthropic::Resources::Messages') }
 
-    let(:mock_response) do
-      { 'completion' => 'Hallo Welt' }
+    def text_block(str)
+      instance_double('Anthropic::Models::TextBlock', type: :text, text: str)
+    end
+
+    def message_with(str)
+      instance_double('Anthropic::Models::Message', content: [text_block(str)])
     end
 
     before do
       allow(Anthropic::Client).to receive(:new).and_return(mock_client)
+      allow(mock_client).to receive(:messages).and_return(messages_resource)
     end
 
     context 'on successful translation' do
       it 'returns translated text' do
-        allow(mock_client).to receive(:complete).and_return(mock_response)
+        allow(messages_resource).to receive(:create).and_return(message_with('Hallo Welt'))
 
         result = provider.translate('Hello World', 'en-US', 'de-DE')
         expect(result).to eq('Hallo Welt')
       end
 
       it 'strips whitespace from response' do
-        response_with_whitespace = { 'completion' => '  Hallo Welt  ' }
-        allow(mock_client).to receive(:complete).and_return(response_with_whitespace)
+        allow(messages_resource).to receive(:create).and_return(message_with('  Hallo Welt  '))
 
         result = provider.translate('Hello World', 'en-US', 'de-DE')
         expect(result).to eq('Hallo Welt')
       end
 
       it 'builds correct prompt with source and target locales' do
-        expect(mock_client).to receive(:complete) do |args|
-          prompt = args[:prompt]
-
-          expect(prompt).to include('Translate the following release notes from en-US to de-DE')
-          expect(prompt).to include('Hello World')
-
-          mock_response
+        expect(messages_resource).to receive(:create) do |args|
+          expect(args[:system_]).to include('Translate the following release notes from en-US to de-DE')
+          expect(args[:messages].first[:content]).to eq('Hello World')
+          message_with('Hallo Welt')
         end
 
         provider.translate('Hello World', 'en-US', 'de-DE')
@@ -153,9 +155,9 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
         provider = described_class.new(valid_params.merge(model_name: 'claude-3-haiku'))
         allow(Anthropic::Client).to receive(:new).and_return(mock_client)
 
-        expect(mock_client).to receive(:complete).with(
+        expect(messages_resource).to receive(:create).with(
           hash_including(model: 'claude-3-haiku')
-        ).and_return(mock_response)
+        ).and_return(message_with('Translated'))
 
         provider.translate('Hello', 'en', 'de')
       end
@@ -164,9 +166,9 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
         provider = described_class.new(valid_params.merge(temperature: 0.8))
         allow(Anthropic::Client).to receive(:new).and_return(mock_client)
 
-        expect(mock_client).to receive(:complete).with(
+        expect(messages_resource).to receive(:create).with(
           hash_including(temperature: 0.8)
-        ).and_return(mock_response)
+        ).and_return(message_with('Translated'))
 
         provider.translate('Hello', 'en', 'de')
       end
@@ -175,9 +177,9 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
         provider = described_class.new(valid_params.merge(max_tokens: 2048))
         allow(Anthropic::Client).to receive(:new).and_return(mock_client)
 
-        expect(mock_client).to receive(:complete).with(
-          hash_including(max_tokens_to_sample: 2048)
-        ).and_return(mock_response)
+        expect(messages_resource).to receive(:create).with(
+          hash_including(max_tokens: 2048)
+        ).and_return(message_with('Translated'))
 
         provider.translate('Hello', 'en', 'de')
       end
@@ -186,23 +188,20 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
         provider = described_class.new(valid_params.merge(temperature: '0.7', max_tokens: '512'))
         allow(Anthropic::Client).to receive(:new).and_return(mock_client)
 
-        expect(mock_client).to receive(:complete).with(
-          hash_including(temperature: 0.7, max_tokens_to_sample: 512)
-        ).and_return(mock_response)
+        expect(messages_resource).to receive(:create).with(
+          hash_including(temperature: 0.7, max_tokens: 512)
+        ).and_return(message_with('Translated'))
 
         provider.translate('Hello', 'en', 'de')
       end
     end
 
     context 'with glossary terms' do
-      it 'includes glossary terms in prompt' do
-        expect(mock_client).to receive(:complete) do |args|
-          prompt = args[:prompt]
-
-          expect(prompt).to include('glossary for consistent terminology')
-          expect(prompt).to include('"Settings" -> "Parametres"')
-
-          mock_response
+      it 'includes glossary terms in system instruction' do
+        expect(messages_resource).to receive(:create) do |args|
+          expect(args[:system_]).to include('glossary for consistent terminology')
+          expect(args[:system_]).to include('"Settings" -> "Parametres"')
+          message_with('Hallo Welt')
         end
 
         provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {
@@ -211,12 +210,9 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
       end
 
       it 'does not include glossary section when terms are empty' do
-        expect(mock_client).to receive(:complete) do |args|
-          prompt = args[:prompt]
-
-          expect(prompt).not_to include('glossary')
-
-          mock_response
+        expect(messages_resource).to receive(:create) do |args|
+          expect(args[:system_]).not_to include('glossary')
+          message_with('Hallo Welt')
         end
 
         provider.translate('Hello World', 'en-US', 'de-DE', glossary_terms: {})
@@ -231,14 +227,11 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
         p
       end
 
-      it 'includes Android character limit in prompt' do
-        expect(mock_client).to receive(:complete) do |args|
-          prompt = args[:prompt]
-
-          expect(prompt).to include('500 characters')
-          expect(prompt).to include('Google Play Store')
-
-          mock_response
+      it 'includes Android character limit in system instruction' do
+        expect(messages_resource).to receive(:create) do |args|
+          expect(args[:system_]).to include('500 characters')
+          expect(args[:system_]).to include('Google Play Store')
+          message_with('Hallo Welt')
         end
 
         provider.translate('Hello World', 'en-US', 'de-DE')
@@ -253,13 +246,10 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
         p
       end
 
-      it 'includes context in prompt' do
-        expect(mock_client).to receive(:complete) do |args|
-          prompt = args[:prompt]
-
-          expect(prompt).to include('Context: This is a mobile app update')
-
-          mock_response
+      it 'includes context in system instruction' do
+        expect(messages_resource).to receive(:create) do |args|
+          expect(args[:system_]).to include('Context: This is a mobile app update')
+          message_with('Hallo Welt')
         end
 
         provider.translate('Hello World', 'en-US', 'de-DE')
@@ -268,14 +258,14 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
 
     context 'on StandardError' do
       it 'returns nil on StandardError' do
-        allow(mock_client).to receive(:complete).and_raise(StandardError.new('Network timeout'))
+        allow(messages_resource).to receive(:create).and_raise(StandardError.new('Network timeout'))
 
         result = provider.translate('Hello World', 'en-US', 'de-DE')
         expect(result).to be_nil
       end
 
       it 'logs error message' do
-        allow(mock_client).to receive(:complete).and_raise(StandardError.new('Network timeout'))
+        allow(messages_resource).to receive(:create).and_raise(StandardError.new('Network timeout'))
 
         expect(Fastlane::UI).to receive(:error).with(/Anthropic provider error: Network timeout/)
 
@@ -292,25 +282,25 @@ describe Fastlane::Helper::Providers::AnthropicProvider do
       end
 
       it 'uses default model when not specified' do
-        expect(mock_client).to receive(:complete).with(
+        expect(messages_resource).to receive(:create).with(
           hash_including(model: 'claude-sonnet-4.5')
-        ).and_return(mock_response)
+        ).and_return(message_with('Translated'))
 
         provider.translate('Hello', 'en', 'de')
       end
 
       it 'uses default max_tokens when not specified' do
-        expect(mock_client).to receive(:complete).with(
-          hash_including(max_tokens_to_sample: 1024)
-        ).and_return(mock_response)
+        expect(messages_resource).to receive(:create).with(
+          hash_including(max_tokens: 1024)
+        ).and_return(message_with('Translated'))
 
         provider.translate('Hello', 'en', 'de')
       end
 
       it 'uses default temperature when not specified' do
-        expect(mock_client).to receive(:complete).with(
+        expect(messages_resource).to receive(:create).with(
           hash_including(temperature: 0.5)
-        ).and_return(mock_response)
+        ).and_return(message_with('Translated'))
 
         provider.translate('Hello', 'en', 'de')
       end
