@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = '>= 3.1'
 
-  spec.add_runtime_dependency 'ruby-openai', '~> 3.7'
+  spec.add_runtime_dependency 'ruby-openai', '~> 8.0'
   spec.add_runtime_dependency 'loco_strings', '~> 0.1.5'
   spec.add_runtime_dependency 'nokogiri', '>= 1.18.9'
 
