@@ -171,6 +171,8 @@ translate_gpt_release_notes(
 
 **Note**: DeepL automatically detects free vs paid API keys (free keys end with `:fx`) and uses the appropriate endpoint.
 
+**Note**: DeepL requires region-qualified targets for English (`EN-US` or `EN-GB`) and Portuguese (`PT-PT` or `PT-BR`). The plugin handles this automatically based on the locale passed — `en` and `en-US` both map to `EN-US`, `en-GB` maps to `EN-GB`, and similarly for Portuguese.
+
 ## Glossary Support (Experimental)
 
 > **Note**: Glossary support is an experimental feature. If you encounter any issues, please [open an issue on GitHub](https://github.com/antonkarliner/fastlane-plugin-translate_gpt_release_notes/issues).
@@ -404,6 +406,38 @@ translate_gpt_release_notes(
 )
 ```
 
+## Dry Run
+
+Use `dry_run: true` to call the provider and preview what would be written — without touching any file on disk:
+
+```ruby
+lane :preview_translations do
+  translate_gpt_release_notes(
+    master_locale: 'en-US',
+    platform: 'ios',
+    dry_run: true
+  )
+end
+```
+
+Output looks like:
+
+```
+DRY RUN: no files will be written.
+  fr-FR: 142 chars
+  de-DE: 158 chars
+  ja-JP: 89 chars
+  es-ES: translation FAILED (would be skipped)
+```
+
+For Android, lines exceeding the 500-character limit are flagged:
+
+```
+  de-DE: 523 chars — EXCEEDS 500-char Android limit
+```
+
+No files are written and `last_successful_run.txt` is not updated, so the next real run will still translate.
+
 ## Important Notes
 
 ### Android 500 Character Limit
@@ -427,6 +461,8 @@ All AI translation APIs cost money. Consider these tips:
 - Google Gemini is generally the most cost-effective option
 - DeepL offers competitive pricing for European languages
 - The plugin skips translation if the source file hasn't changed (tracked via `last_successful_run.txt`)
+- If all translations fail, `last_successful_run.txt` is not updated — the next run will retry rather than skip
+- Locales where translation fails are left with their existing file content untouched
 
 ### Service Tiers (OpenAI)
 
