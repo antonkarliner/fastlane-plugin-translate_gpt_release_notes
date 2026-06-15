@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-15
+
+### Added
+
+- **`dry_run` mode**: Pass `dry_run: true` to call the provider and preview per-locale translations and character counts without writing any files or updating `last_successful_run.txt`. Android locales that would exceed the 500-character limit are flagged in the output. Settable via the `TRANSLATE_DRY_RUN` environment variable.
+
+### Fixed
+
+- **Anthropic provider**: Migrated from the removed legacy Text-Completions API (`client.complete`) to the current Messages API (`client.messages.create`). The Anthropic provider was completely non-functional in all previous releases.
+- **Data loss on failed translation**: When a provider returns `nil` (API error, timeout, etc.), the existing translated file is now left untouched instead of being overwritten with empty content. Additionally, `last_successful_run.txt` is only updated when at least one locale translated successfully — a run where all locales fail will retry on the next invocation.
+- **DeepL English and Portuguese targets**: DeepL requires region-qualified target codes for English (`EN-US` / `EN-GB`) and Portuguese (`PT-PT` / `PT-BR`); the bare `EN` and `PT` codes are rejected by the API. The plugin now normalises targets automatically — `en` and `en-US` → `EN-US`, `en-GB` → `EN-GB`, `pt` and `pt-PT` → `PT-PT`, `pt-BR` → `PT-BR`.
+- **Gemini credential via env var**: The Gemini provider now reads its API key through the base-class `credential()` method (matching OpenAI and Anthropic), so the `TRANSLATE_GEMINI_API_TOKEN` environment variable is honoured for actual API calls, not just validation.
+
+### Changed
+
+- **`ruby-openai` upgraded** from `~> 3.7` (locked at 3.7.0, 2023) to `~> 8.0` (8.3.0). The provider API surface (`OpenAI::Client.new(access_token:, request_timeout:)` and `client.chat(parameters:)`) is unchanged.
+
+### Removed
+
+- Dead `wait` progress-bar method and `Colorizer` helper class from `TranslateGptReleaseNotesHelper` — neither was called anywhere in the codebase.
+
 ## [0.3.2] - 2026-04-01
 
 ### Improved
