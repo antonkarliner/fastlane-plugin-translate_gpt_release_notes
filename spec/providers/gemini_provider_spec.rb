@@ -101,6 +101,20 @@ describe Fastlane::Helper::Providers::GeminiProvider do
         described_class.new(valid_params.merge(api_token: nil))
       end
     end
+
+    context 'credential resolution' do
+      around do |example|
+        original = ENV['TRANSLATE_GEMINI_API_TOKEN']
+        example.run
+        ENV['TRANSLATE_GEMINI_API_TOKEN'] = original
+      end
+
+      it 'prefers the TRANSLATE_GEMINI_API_TOKEN env var over params[:api_token]' do
+        ENV['TRANSLATE_GEMINI_API_TOKEN'] = 'env-key'
+        provider = described_class.new(valid_params.merge(api_token: 'param-key'))
+        expect(provider.instance_variable_get(:@api_key)).to eq('env-key')
+      end
+    end
   end
 
   describe '#translate' do

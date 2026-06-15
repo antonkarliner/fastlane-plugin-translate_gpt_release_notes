@@ -57,7 +57,7 @@ module Fastlane
         # @param params [Hash] Configuration parameters for the provider
         def initialize(params)
           super
-          @api_key = params[:api_token]
+          @api_key = credential(:api_token)
           @model = @params[:model_name] || DEFAULT_MODEL
           @temperature = (@params[:temperature] || DEFAULT_TEMPERATURE).to_f
           @timeout = (@params[:request_timeout] || DEFAULT_TIMEOUT).to_i
