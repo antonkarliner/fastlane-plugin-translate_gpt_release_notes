@@ -1,4 +1,19 @@
+require 'tmpdir'
+require 'fileutils'
+
 describe Fastlane::Actions::TranslateGptReleaseNotesAction do
+  def with_ios_metadata(locales: %w[en-US fr-FR de-DE], master_text: 'New features and bug fixes')
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        locales.each do |loc|
+          FileUtils.mkdir_p(File.join('fastlane', 'metadata', loc))
+        end
+        File.write(File.join('fastlane', 'metadata', 'en-US', 'release_notes.txt'), master_text)
+        yield dir
+      end
+    end
+  end
+
   describe '#run' do
     before(:each) do
       # Mock credentials to exist by default for provider tests
@@ -107,6 +122,81 @@ describe Fastlane::Actions::TranslateGptReleaseNotesAction do
         allow(Dir).to receive(:exist?).and_return(false)
 
         expect { Fastlane::Actions::TranslateGptReleaseNotesAction.run(params) }.not_to raise_error
+      end
+    end
+
+    context 'when the master file exists and providers succeed' do
+      it 'writes a translated file for each non-master locale' do
+        allow(Fastlane::UI).to receive(:message)
+        allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
+          .to receive(:translate_text) { |_inst, _text, locale, _platform| "translated-#{locale}" }
+
+        with_ios_metadata do
+          Fastlane::Actions::TranslateGptReleaseNotesAction.run(
+            provider: 'openai', platform: 'ios', master_locale: 'en-US', api_token: 'x'
+          )
+
+          expect(File.read('fastlane/metadata/fr-FR/release_notes.txt')).to eq('translated-fr-FR')
+          expect(File.read('fastlane/metadata/de-DE/release_notes.txt')).to eq('translated-de-DE')
+          expect(File.exist?('last_successful_run.txt')).to be true
+        end
+      end
+
+      it 'does not write a file for the master locale' do
+        allow(Fastlane::UI).to receive(:message)
+        allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
+          .to receive(:translate_text) { |_inst, _text, locale, _platform| "translated-#{locale}" }
+
+        with_ios_metadata do
+          Fastlane::Actions::TranslateGptReleaseNotesAction.run(
+            provider: 'openai', platform: 'ios', master_locale: 'en-US', api_token: 'x'
+          )
+          expect(File.read('fastlane/metadata/en-US/release_notes.txt')).to eq('New features and bug fixes')
+        end
+      end
+    end
+
+    context 'incremental skip' do
+      it 'skips translation when the source file is older than the last run' do
+        allow(Fastlane::UI).to receive(:message)
+        translated = false
+        allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
+          .to receive(:translate_text) do
+            translated = true
+            'x'
+          end
+
+        with_ios_metadata do
+          File.write('last_successful_run.txt', (Time.now.to_i + 3600).to_s)
+          Fastlane::Actions::TranslateGptReleaseNotesAction.run(
+            provider: 'openai', platform: 'ios', master_locale: 'en-US', api_token: 'x'
+          )
+          expect(translated).to be false
+        end
+      end
+    end
+
+    context 'when a translation fails (provider returns nil)' do
+      # CHARACTERIZATION OF CURRENT BEHAVIOR - this is the data-loss bug that
+      # plan 003 fixes. When 003 lands, this example must be updated to assert the
+      # file is left untouched and the run is NOT marked successful.
+      it 'currently overwrites the target file with an empty string' do
+        allow(Fastlane::UI).to receive(:message)
+        allow(Fastlane::UI).to receive(:warning)
+        allow(Fastlane::UI).to receive(:error)
+        allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
+          .to receive(:translate_text).and_return(nil)
+
+        with_ios_metadata do
+          File.write('fastlane/metadata/fr-FR/release_notes.txt', 'bonnes notes existantes')
+
+          Fastlane::Actions::TranslateGptReleaseNotesAction.run(
+            provider: 'openai', platform: 'ios', master_locale: 'en-US', api_token: 'x'
+          )
+
+          expect(File.read('fastlane/metadata/fr-FR/release_notes.txt')).to eq('')
+          expect(File.exist?('last_successful_run.txt')).to be true
+        end
       end
     end
   end
