@@ -220,6 +220,43 @@ describe Fastlane::Actions::TranslateGptReleaseNotesAction do
         end
       end
     end
+
+    context 'dry_run mode' do
+      it 'does not write any target files and does not record a run' do
+        allow(Fastlane::UI).to receive(:message)
+        allow(Fastlane::UI).to receive(:important)
+        allow(Fastlane::UI).to receive(:warning)
+        allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
+          .to receive(:translate_text) { |_inst, _t, locale, _p| "translated-#{locale}" }
+
+        with_ios_metadata do
+          Fastlane::Actions::TranslateGptReleaseNotesAction.run(
+            provider: 'openai', platform: 'ios', master_locale: 'en-US', api_token: 'x', dry_run: true
+          )
+
+          expect(File.exist?('fastlane/metadata/fr-FR/release_notes.txt')).to be false
+          expect(File.exist?('last_successful_run.txt')).to be false
+        end
+      end
+
+      it 'still calls the provider to produce the preview' do
+        allow(Fastlane::UI).to receive(:message)
+        allow(Fastlane::UI).to receive(:important)
+        called = false
+        allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
+          .to receive(:translate_text) do
+            called = true
+            'x'
+          end
+
+        with_ios_metadata do
+          Fastlane::Actions::TranslateGptReleaseNotesAction.run(
+            provider: 'openai', platform: 'ios', master_locale: 'en-US', api_token: 'x', dry_run: true
+          )
+          expect(called).to be true
+        end
+      end
+    end
   end
 
   describe '.available_options' do

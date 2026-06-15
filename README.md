@@ -287,6 +287,7 @@ This keeps the glossary concise and avoids flooding the AI provider with irrelev
 | `context` | Context for translation to improve accuracy | `GPT_CONTEXT` | - |
 | `glossary` | Path to a curated JSON glossary file | `GLOSSARY_PATH` | - |
 | `glossary_dir` | Path to localization files directory for auto-extracting glossary | `GLOSSARY_DIR` | - |
+| `dry_run` | Preview translations and character counts without writing files | `TRANSLATE_DRY_RUN` | `false` |
 
 ### Provider-Specific API Keys
 

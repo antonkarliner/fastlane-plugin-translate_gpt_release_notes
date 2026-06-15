@@ -57,17 +57,21 @@ module Fastlane
           translations[locale] = helper.translate_text(master_texts, locale, params[:platform])
         end
 
-        update_translated_texts(base_directory, translated_texts, is_ios, params)
-
-        # Only mark the run successful if at least one translation actually succeeded;
-        # otherwise a transient failure would suppress the next run's retry.
-        any_success = translated_texts.any? do |locale, text|
-          locale != params[:master_locale] && !translation_empty?(text)
-        end
-        if any_success
-          File.write(last_run_file, Time.now.to_i)
+        if params[:dry_run]
+          print_dry_run_preview(translated_texts, params)
         else
-          UI.error("No translations succeeded; not updating #{last_run_file} so the next run will retry.")
+          update_translated_texts(base_directory, translated_texts, is_ios, params)
+
+          # Only mark the run successful if at least one translation actually succeeded;
+          # otherwise a transient failure would suppress the next run's retry.
+          any_success = translated_texts.any? do |locale, text|
+            locale != params[:master_locale] && !translation_empty?(text)
+          end
+          if any_success
+            File.write(last_run_file, Time.now.to_i)
+          else
+            UI.error("No translations succeeded; not updating #{last_run_file} so the next run will retry.")
+          end
         end
       end
 
@@ -103,6 +107,27 @@ module Fastlane
 
       def self.translation_empty?(text)
         text.nil? || text.to_s.strip.empty?
+      end
+
+      def self.print_dry_run_preview(translated_texts, params)
+        android_limit = 500 # Google Play hard limit; see BaseProvider::ANDROID_CHAR_LIMIT
+        UI.important('DRY RUN: no files will be written.')
+        translated_texts.each do |locale, text|
+          next if locale == params[:master_locale]
+
+          print_locale_preview(locale, text, android_limit, params[:platform])
+        end
+      end
+
+      def self.print_locale_preview(locale, text, android_limit, platform)
+        if text.nil? || text.to_s.strip.empty?
+          UI.warning("  #{locale}: translation FAILED (would be skipped)")
+          return
+        end
+        length = text.length
+        over = platform == 'android' && length > android_limit
+        suffix = over ? " — EXCEEDS #{android_limit}-char Android limit" : ''
+        UI.message("  #{locale}: #{length} chars#{suffix}")
       end
 
       def self.update_translated_texts(base_directory, translated_texts, is_ios, params)
@@ -266,6 +291,14 @@ module Fastlane
               next if value.nil? || value.to_s.strip.empty?
               UI.user_error!("Glossary directory not found: #{value}") unless Dir.exist?(value)
             end
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :dry_run,
+            env_name: 'TRANSLATE_DRY_RUN',
+            description: 'Preview translations without writing files',
+            type: Boolean,
+            optional: true,
+            default_value: false
           )
         ]
       end
