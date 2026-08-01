@@ -182,7 +182,7 @@ module Fastlane
         def enforce_android_limit(text)
           return text unless @params[:platform] == 'android' && text && text.length > ANDROID_CHAR_LIMIT
 
-          UI.warning("Translation exceeds #{ANDROID_CHAR_LIMIT} characters (#{text.length}), truncating...")
+          UI.important("Translation exceeds #{ANDROID_CHAR_LIMIT} characters (#{text.length}), truncating...")
           text[0...ANDROID_CHAR_LIMIT]
         end
 

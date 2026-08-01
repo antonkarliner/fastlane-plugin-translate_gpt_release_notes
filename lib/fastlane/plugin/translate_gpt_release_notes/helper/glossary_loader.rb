@@ -86,7 +86,7 @@ module Fastlane
       # @param path [String] Path to the JSON glossary file
       def load_from_file(path)
         unless File.exist?(path)
-          UI.warning("Glossary file not found: #{path}")
+          UI.important("Glossary file not found: #{path}")
           return
         end
 
@@ -112,13 +112,13 @@ module Fastlane
       # @param dir [String] Path to the directory containing localization files
       def load_from_directory(dir)
         unless Dir.exist?(dir)
-          UI.warning("Glossary directory not found: #{dir}")
+          UI.important("Glossary directory not found: #{dir}")
           return
         end
 
         format = detect_format(dir)
         unless format
-          UI.warning("No supported localization files found in #{dir}")
+          UI.important("No supported localization files found in #{dir}")
           return
         end
 
@@ -127,7 +127,7 @@ module Fastlane
 
         source_key = find_source_locale_key(locale_files)
         unless source_key
-          UI.warning("Source locale '#{@source_locale}' not found in #{dir}")
+          UI.important("Source locale '#{@source_locale}' not found in #{dir}")
           return
         end
 
@@ -282,7 +282,7 @@ module Fastlane
         else {}
         end
       rescue StandardError => e
-        UI.warning("Failed to parse #{path}: #{e.message}")
+        UI.important("Failed to parse #{path}: #{e.message}")
         {}
       end
 

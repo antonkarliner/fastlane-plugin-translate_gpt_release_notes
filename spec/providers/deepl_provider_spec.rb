@@ -9,7 +9,7 @@ describe Fastlane::Helper::Providers::DeepLProvider do
   before do
     allow(Fastlane::UI).to receive(:message)
     allow(Fastlane::UI).to receive(:error)
-    allow(Fastlane::UI).to receive(:warning)
+    allow(Fastlane::UI).to receive(:important)
   end
 
   describe '.provider_name' do
@@ -239,7 +239,7 @@ describe Fastlane::Helper::Providers::DeepLProvider do
 
         provider = described_class.new(android_params)
 
-        expect(Fastlane::UI).to receive(:warning).with(/exceeds 500 characters/)
+        expect(Fastlane::UI).to receive(:important).with(/exceeds 500 characters/)
 
         result = provider.translate(long_text, 'en-US', 'de-DE')
         expect(result.length).to eq(500)
@@ -251,7 +251,7 @@ describe Fastlane::Helper::Providers::DeepLProvider do
 
         provider = described_class.new(android_params)
 
-        expect(Fastlane::UI).not_to receive(:warning)
+        expect(Fastlane::UI).not_to receive(:important)
 
         result = provider.translate('Short', 'en-US', 'de-DE')
         expect(result).to eq('Short')
@@ -262,7 +262,7 @@ describe Fastlane::Helper::Providers::DeepLProvider do
 
         provider = described_class.new(valid_params.merge(platform: 'ios'))
 
-        expect(Fastlane::UI).not_to receive(:warning)
+        expect(Fastlane::UI).not_to receive(:important)
 
         result = provider.translate(long_text, 'en-US', 'de-DE')
         expect(result.length).to eq(600)

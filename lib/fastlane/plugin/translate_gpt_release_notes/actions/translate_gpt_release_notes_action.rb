@@ -121,7 +121,7 @@ module Fastlane
 
       def self.print_locale_preview(locale, text, android_limit, platform)
         if text.nil? || text.to_s.strip.empty?
-          UI.warning("  #{locale}: translation FAILED (would be skipped)")
+          UI.important("  #{locale}: translation FAILED (would be skipped)")
           return
         end
         length = text.length
@@ -135,7 +135,7 @@ module Fastlane
           next if locale == params[:master_locale]  # Skip master locale
 
           if translation_empty?(text)
-            UI.warning("Skipping #{locale}: translation failed or returned empty; existing file left unchanged.")
+            UI.important("Skipping #{locale}: translation failed or returned empty; existing file left unchanged.")
             next
           end
 

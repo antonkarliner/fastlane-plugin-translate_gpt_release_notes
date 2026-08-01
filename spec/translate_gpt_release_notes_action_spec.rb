@@ -179,7 +179,7 @@ describe Fastlane::Actions::TranslateGptReleaseNotesAction do
     context 'when all translations fail (provider returns nil)' do
       it 'leaves existing target files untouched and does not record a successful run' do
         allow(Fastlane::UI).to receive(:message)
-        allow(Fastlane::UI).to receive(:warning)
+        allow(Fastlane::UI).to receive(:important)
         allow(Fastlane::UI).to receive(:error)
         allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
           .to receive(:translate_text).and_return(nil)
@@ -200,7 +200,7 @@ describe Fastlane::Actions::TranslateGptReleaseNotesAction do
     context 'when some translations fail' do
       it 'writes the successful locale, preserves the failed locale, and records the run' do
         allow(Fastlane::UI).to receive(:message)
-        allow(Fastlane::UI).to receive(:warning)
+        allow(Fastlane::UI).to receive(:important)
         allow(Fastlane::UI).to receive(:error)
         allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
           .to receive(:translate_text) do |_inst, _text, locale, _platform|
@@ -225,7 +225,7 @@ describe Fastlane::Actions::TranslateGptReleaseNotesAction do
       it 'does not write any target files and does not record a run' do
         allow(Fastlane::UI).to receive(:message)
         allow(Fastlane::UI).to receive(:important)
-        allow(Fastlane::UI).to receive(:warning)
+        allow(Fastlane::UI).to receive(:important)
         allow_any_instance_of(Fastlane::Helper::TranslateGptReleaseNotesHelper)
           .to receive(:translate_text) { |_inst, _t, locale, _p| "translated-#{locale}" }
 

@@ -13,7 +13,7 @@ module Fastlane
 
         # Validate provider selection
         unless Providers::ProviderFactory.valid_provider?(provider_name)
-          UI.warning "Unknown provider '#{provider_name}', falling back to OpenAI"
+          UI.important "Unknown provider '#{provider_name}', falling back to OpenAI"
           provider_name = 'openai'
         end
 

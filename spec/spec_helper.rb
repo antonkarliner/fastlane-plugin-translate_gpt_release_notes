@@ -16,7 +16,7 @@ Fastlane.load_actions # load other actions (in case your plugin calls other acti
 
 # Fastlane::UI delegates all calls via method_missing. Explicitly define the
 # most-stubbed methods so verify_partial_doubles can mock them in specs.
-%i[message error warning important user_error!].each do |m|
+%i[message error important user_error!].each do |m|
   next if Fastlane::UI.respond_to?(m, true)
 
   Fastlane::UI.define_singleton_method(m) { |*args, &blk| ui_object.public_send(__method__, *args, &blk) }

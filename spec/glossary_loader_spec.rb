@@ -5,7 +5,7 @@ require 'fileutils'
 describe Fastlane::Helper::GlossaryLoader do
   before do
     allow(Fastlane::UI).to receive(:message)
-    allow(Fastlane::UI).to receive(:warning)
+    allow(Fastlane::UI).to receive(:important)
     allow(Fastlane::UI).to receive(:error)
   end
 
@@ -16,12 +16,12 @@ describe Fastlane::Helper::GlossaryLoader do
     end
 
     it 'warns when glossary file not found' do
-      expect(Fastlane::UI).to receive(:warning).with(/not found/)
+      expect(Fastlane::UI).to receive(:important).with(/not found/)
       described_class.new(master_locale: 'en-US', glossary: '/nonexistent/file.json')
     end
 
     it 'warns when glossary directory not found' do
-      expect(Fastlane::UI).to receive(:warning).with(/not found/)
+      expect(Fastlane::UI).to receive(:important).with(/not found/)
       described_class.new(master_locale: 'en-US', glossary_dir: '/nonexistent/dir')
     end
   end
