@@ -82,13 +82,16 @@ module Fastlane
         # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String, nil] Translated text or nil on error
         def translate(text, source_locale, target_locale, glossary_terms: {})
-          system_instruction = build_system_instruction(
-            source_locale, target_locale,
-            glossary_terms: glossary_terms,
-            platform: @params[:platform]
-          )
-          response = @client.messages.create(build_create_params(system_instruction, text))
-          enforce_android_limit(extract_text_from_response(response))
+          translate_with_android_retries(text, target_locale) do |additional_instruction, user_content|
+            system_instruction = build_system_instruction(
+              source_locale, target_locale,
+              glossary_terms: glossary_terms,
+              platform: @params[:platform],
+              additional_instruction: additional_instruction
+            )
+            response = @client.messages.create(build_create_params(system_instruction, user_content))
+            extract_text_from_response(response)
+          end
         rescue StandardError => e
           UI.error "Anthropic provider error: #{e.message}"
           nil

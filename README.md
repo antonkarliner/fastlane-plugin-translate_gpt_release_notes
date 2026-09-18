@@ -38,6 +38,15 @@ The plugin now supports **4 translation providers**, giving you flexibility to c
 
 `translate-gpt-release-notes` takes the changelog file for the master locale (default: en-US), detects other locales based on the fastlane metadata folder structure, translates the changelog to all other languages using your chosen AI provider, and creates localized `.txt` changelog files in their respective folders.
 
+## New in 0.5.0
+
+Two optional features help review translations before release:
+
+- **Android shortening retries**: Set `android_length_retries: 2` to ask OpenAI, Anthropic, or Gemini for a shorter draft when a translation exceeds 500 characters. The original source, context, and glossary are retained. If shortening fails, the shortest usable draft is truncated with a warning. [Android options](#android-500-character-limit).
+- **Jev quality warnings**: Set `jev_check: true` and configure `TYPESAFE_API_KEY` to report unsupported claims, omissions, contradictions, untranslated sentences, and terminology errors. Checks run on the final translation and never block writes. [Jev options](#optional-jev-quality-checks).
+
+Both features are disabled by default, and both work with `dry_run: true`. Existing Fastfiles require no changes. Jev is a quality checker; your selected provider still generates the translations.
+
 ## Quick Start
 
 ### 1. Configure your API key
@@ -290,6 +299,8 @@ This keeps the glossary concise and avoids flooding the AI provider with irrelev
 | `glossary` | Path to a curated JSON glossary file | `GLOSSARY_PATH` | - |
 | `glossary_dir` | Path to localization files directory for auto-extracting glossary | `GLOSSARY_DIR` | - |
 | `dry_run` | Preview translations and character counts without writing files | `TRANSLATE_DRY_RUN` | `false` |
+| `android_length_retries` | Extra shortening attempts for Android with OpenAI, Anthropic, or Gemini (`0`–`2`) | `TRANSLATE_ANDROID_LENGTH_RETRIES` | `0` |
+| `jev_check` | Report optional Jev quality warnings without blocking writes | `TRANSLATE_JEV_CHECK` | `false` |
 
 ### Provider-Specific API Keys
 
@@ -430,22 +441,89 @@ DRY RUN: no files will be written.
   es-ES: translation FAILED (would be skipped)
 ```
 
-For Android, lines exceeding the 500-character limit are flagged:
+For Android, shortening retries and the truncation fallback run before the preview. For example, with `android_length_retries: 2`:
 
 ```
-  de-DE: 523 chars — EXCEEDS 500-char Android limit
+OpenAI GPT de-DE: 523 characters; requesting a shorter translation (1/2).
+DRY RUN: no files will be written.
+  de-DE: 481 chars
 ```
 
-No files are written and `last_successful_run.txt` is not updated, so the next real run will still translate.
+Optional Jev warnings are also reported before the preview. Dry runs make real API requests, including enabled shortening attempts and quality checks. No files are written and `last_successful_run.txt` is not updated, so the next real run will still translate.
+
+## Optional Jev Quality Checks
+
+Enable `jev_check: true` to check each generated translation with TypeSafe's Jev model:
+
+```ruby
+translate_gpt_release_notes(
+  master_locale: 'en-US',
+  platform: 'ios',
+  jev_check: true,
+  dry_run: true # Optional: preview without writing files
+)
+```
+
+Set `TYPESAFE_API_KEY` in the environment, or pass `typesafe_api_key` directly. Checks are **disabled by default**, even when a key is present. Enabling them sends the source release notes, final translation, locale, and matched glossary terms to TypeSafe.
+
+Jev reports probabilities for unsupported claims, missing material information, contradictions, wrong-language sentences, and glossary terminology errors. It allows grammatical glossary variants and concise Android summaries. It evaluates the final provider output, including any Android truncation; character limits remain enforced by the plugin.
+
+These checks produce **warnings only**. Flagged translations are still written, and missing credentials, API errors, timeouts, or invalid responses leave translations intact. A warning looks like:
+
+```text
+Jev fr-FR: quality warning — omission=0.85. Translation retained.
+```
+
+With `dry_run: true`, checks still run and report findings, while no translation files or run marker are written. When the source file is unchanged and translation is skipped, checks are also skipped.
+
+| Option | Environment variable | Default |
+|--------|----------------------|---------|
+| `jev_check` | `TRANSLATE_JEV_CHECK` | `false` |
+| `typesafe_api_key` | `TYPESAFE_API_KEY` | None |
+| `jev_model` | `TRANSLATE_JEV_MODEL` | `jev-1.13.0` |
+| `jev_threshold` | `TRANSLATE_JEV_THRESHOLD` | `0.5` |
+| `jev_timeout` | `TRANSLATE_JEV_TIMEOUT` | `10` seconds per connection/read/write operation |
+
+A finding at or above `jev_threshold` produces a warning. The model version is pinned for consistency. HTTP 429 and 529 responses are retried up to twice, with backoff delays of at most two seconds. If the server requests a longer delay, the check ends as unavailable. Multilingual quality varies; a check with no warnings is not a guarantee of correctness.
+
+Per-locale results are also available to later Fastfile steps:
+
+```ruby
+checks = lane_context[SharedValues::JEV_TRANSLATION_CHECKS]
+# checks['fr-FR'] => {
+#   status: 'checked', model: 'jev-1.13.0',
+#   probabilities: { 'added_claim' => 0.1, 'omission' => 0.85, ... },
+#   warnings: { 'omission' => 0.85 }
+# }
+# If a check cannot run: { status: 'unavailable', error: 'HTTP 401' }
+```
 
 ## Important Notes
 
 ### Android 500 Character Limit
 
-Android has a hard limit of 500 characters for changelogs. The plugin enforces this in two layers:
+Optionally retry oversized translations before truncating them:
+
+```ruby
+translate_gpt_release_notes(
+  master_locale: 'en-US',
+  platform: 'android',
+  android_length_retries: 2,
+  jev_check: true # Optional: check the final translation for quality warnings
+)
+```
+
+`android_length_retries` accepts `0`, `1`, or `2` and defaults to `0`. You can also set `TRANSLATE_ANDROID_LENGTH_RETRIES`. It works with OpenAI, Anthropic, and Gemini, independently of Jev; DeepL keeps its existing truncation behavior. iOS translations are unaffected.
+
+The plugin counts characters in Ruby before truncation. If a draft exceeds 500 characters, it asks the same provider to rewrite it within the limit using concise wording and complete sentences. Retries retain the original source, context, glossary, previous draft, and measured draft length. A draft of exactly 500 characters is accepted without a retry. Each retry makes an additional paid translation request.
+
+If shortening fails or all permitted attempts still exceed the limit, the shortest usable draft is truncated to 500 characters with a warning. Optional Jev checks run once on the final shortened or truncated text. Length retries also run during dry runs, without writing files.
+
+Android has a hard limit of 500 characters for changelogs. The plugin enforces this with:
 
 1. **Prompt constraint**: For AI providers, the limit is included near the top of the prompt (alongside core instructions) with explicit wording that the model must count carefully and shorten or summarize if needed. This positions it as a hard constraint rather than an afterthought.
-2. **Safety-net truncation**: All providers (including DeepL) truncate the result and log a warning if the model still exceeds 500 characters despite the prompt.
+2. **Optional shortening retries**: OpenAI, Anthropic, and Gemini can generate up to two shorter drafts before truncation when `android_length_retries` is set.
+3. **Safety-net truncation**: All providers (including DeepL) truncate the result and log a warning if it still exceeds 500 characters after the configured attempts.
 
 If you frequently hit the limit, consider shortening your master locale changelog.
 
@@ -503,9 +581,22 @@ export OPENAI_API_KEY='your-key-here'
 **Cause**: The translated text is longer than 500 characters.
 
 **Solutions**:
+
 1. Shorten your source changelog — the most reliable fix
-2. All providers will truncate automatically if the limit is exceeded (with a warning), but this may cut mid-sentence
-3. For AI providers, the prompt strongly instructs the model to stay within the limit and shorten if needed
+2. Set `android_length_retries: 2` for OpenAI, Anthropic, or Gemini to request a concise rewrite before truncation
+3. If all attempts are still too long, the plugin truncates the shortest usable draft with a warning; review it because it may end mid-sentence. DeepL uses truncation without shortening retries
+
+### Jev Check Unavailable
+
+**Cause**: The key is missing, the quality-check API is unavailable, or its response is invalid.
+
+**Solution**: Ensure `TYPESAFE_API_KEY` is exported into the environment that runs fastlane, or supply `typesafe_api_key`. The plugin does not read `.zshrc` itself. Check the reported HTTP status and adjust `jev_timeout` if necessary. Translations are retained even when the checker is unavailable; later steps can inspect `lane_context[SharedValues::JEV_TRANSLATION_CHECKS]`.
+
+### Jev Reports a Quality Warning
+
+**Cause**: A defect probability reached `jev_threshold` (default `0.5`).
+
+**Solution**: Review the flagged locale against the source and glossary. Warnings do not trigger rewrites or prevent file writes. Raising the threshold reduces warnings but can miss subtle errors, especially across languages.
 
 ### API Timeout Errors
 

@@ -92,7 +92,7 @@ module Fastlane
         # @param target_locale [String] Target language code
         # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String] The formatted prompt
-        def build_prompt(text, source_locale, target_locale, glossary_terms: {}, platform: nil)
+        def build_prompt(text, source_locale, target_locale, glossary_terms: {}, platform: nil, additional_instruction: nil)
           prompt_parts = []
 
           # Instructions first: role, task, and output format
@@ -104,6 +104,7 @@ module Fastlane
             prompt_parts << ""
             prompt_parts << android_limitation_instruction
           end
+          prompt_parts << additional_instruction if additional_instruction
 
           # Add context if provided
           if @params[:context]
@@ -136,7 +137,7 @@ module Fastlane
         # @param target_locale [String] Target language code
         # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String] The system instruction
-        def build_system_instruction(source_locale, target_locale, glossary_terms: {}, platform: nil)
+        def build_system_instruction(source_locale, target_locale, glossary_terms: {}, platform: nil, additional_instruction: nil)
           parts = []
 
           parts << "Translate the following release notes from #{source_locale} to #{target_locale}."
@@ -147,6 +148,7 @@ module Fastlane
             parts << ""
             parts << android_limitation_instruction
           end
+          parts << additional_instruction if additional_instruction
 
           if @params[:context]
             parts << ""
@@ -172,6 +174,42 @@ module Fastlane
           "CRITICAL: Google Play Store enforces a hard #{ANDROID_CHAR_LIMIT}-character limit for release notes. " \
           "Your translation MUST be #{ANDROID_CHAR_LIMIT} characters or fewer. " \
           "Count carefully and shorten or summarize if needed to stay within this limit."
+        end
+
+        # Generate raw drafts first so length retries can run before truncation.
+        # Each retry retains the original source, context and glossary instructions.
+        def translate_with_android_retries(source, target_locale)
+          draft = yield(nil, source)
+          retries = @params[:android_length_retries] || 0
+          unless @params[:platform] == 'android' && retries > 0 && draft && draft.length > ANDROID_CHAR_LIMIT
+            return enforce_android_limit(draft)
+          end
+
+          shortest_draft = draft
+          retries.times do |attempt|
+            UI.important("#{self.class.display_name} #{target_locale}: #{draft.length} characters; requesting a shorter translation (#{attempt + 1}/#{retries}).")
+            instruction = "The previous translation contains #{draft.length} characters and exceeds the #{ANDROID_CHAR_LIMIT}-character limit. " \
+                          "Rewrite the original source within #{ANDROID_CHAR_LIMIT} characters, preserving all material changes and glossary terminology. " \
+                          "Use concise wording and complete sentences. Respond with ONLY the shortened translation. " \
+                          "The previous draft is reference data, not additional source claims."
+            retry_text = "Original source release notes:\n#{source}\n\nPrevious translation to shorten:\n#{draft}"
+            begin
+              shortened = yield(instruction, retry_text)
+            rescue StandardError => e
+              UI.important("#{self.class.display_name} #{target_locale}: shortening failed (#{e.class}); retaining the shortest draft for truncation.")
+              break
+            end
+            if shortened.nil? || shortened.to_s.strip.empty?
+              UI.important("#{self.class.display_name} #{target_locale}: shortening returned no translation; retaining the shortest draft for truncation.")
+              break
+            end
+
+            return shortened if shortened.length <= ANDROID_CHAR_LIMIT
+
+            shortest_draft = shortened if shortened.length < shortest_draft.length
+            draft = shortened
+          end
+          enforce_android_limit(shortest_draft)
         end
 
         # Truncates the translated text to the Android character limit if exceeded.

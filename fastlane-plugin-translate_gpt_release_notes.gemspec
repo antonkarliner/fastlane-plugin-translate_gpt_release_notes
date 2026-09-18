@@ -16,7 +16,9 @@ Gem::Specification.new do |spec|
   spec.metadata["source_code_uri"] = "https://github.com/antonkarliner/fastlane-plugin-translate_gpt_release_notes"
   spec.metadata["github_repo"] = "https://github.com/antonkarliner/fastlane-plugin-translate_gpt_release_notes"
 
-  spec.files         = Dir["lib/**/*"] + %w(README.md LICENSE)
+  spec.files         = Dir["lib/**/*"].select do |path|
+    File.file?(path) && !File.basename(path).include?('.sync-conflict-')
+  end + %w(README.md CHANGELOG.md LICENSE)
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ['lib']
 

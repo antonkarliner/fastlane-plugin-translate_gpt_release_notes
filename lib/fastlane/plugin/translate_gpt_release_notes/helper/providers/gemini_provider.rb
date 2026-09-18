@@ -79,18 +79,21 @@ module Fastlane
         # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String, nil] Translated text or nil on error
         def translate(text, source_locale, target_locale, glossary_terms: {})
-          # Build prompt using inherited method (includes instructions, glossary, and text)
-          prompt = build_prompt(
-            text, source_locale, target_locale,
-            glossary_terms: glossary_terms,
-            platform: @params[:platform]
-          )
+          translate_with_android_retries(text, target_locale) do |additional_instruction, user_content|
+            # Build prompt using inherited method (includes instructions, glossary, and text)
+            prompt = build_prompt(
+              user_content, source_locale, target_locale,
+              glossary_terms: glossary_terms,
+              platform: @params[:platform],
+              additional_instruction: additional_instruction
+            )
 
-          # Make API call
-          result = make_api_request(prompt)
+            # Make API call
+            result = make_api_request(prompt)
 
-          # Extract text from response
-          enforce_android_limit(extract_text_from_response(result))
+            # Extract text from response
+            extract_text_from_response(result)
+          end
         rescue StandardError => e
           UI.error "Gemini provider error: #{e.message}"
           nil

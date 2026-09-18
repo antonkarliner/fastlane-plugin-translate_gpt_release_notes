@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-19
+
+### Added
+
+- Optional Android shortening retries (`android_length_retries: 0..2`) for OpenAI, Anthropic, and Gemini. Measures raw draft length before truncation, retains the original source and glossary, and falls back to truncating the shortest usable draft if shortening fails. Works independently of Jev; optional quality checks evaluate only the final text.
+- Optional Jev translation quality checks (`jev_check: true`), disabled by default. Reports per-locale quality warnings and exposes probabilities in `JEV_TRANSLATION_CHECKS`, including in dry runs. Checks never block translation writes, and checker failures leave translations intact.
+
+### Fixed
+
+- Exclude Syncthing conflict copies from automatic plugin loading and gem packaging so they cannot override the current action and helpers. Include this changelog in the packaged gem.
+
 ## [0.4.1] - 2026-08-01
 
 ### Fixed

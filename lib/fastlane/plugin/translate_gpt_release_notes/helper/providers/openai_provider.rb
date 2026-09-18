@@ -81,37 +81,39 @@ module Fastlane
         # @param glossary_terms [Hash] Optional glossary { source_term => target_translation }
         # @return [String, nil] Translated text or nil on error
         def translate(text, source_locale, target_locale, glossary_terms: {})
-          # Build system instruction and user content separately for better results
-          system_instruction = build_system_instruction(
-            source_locale, target_locale,
-            glossary_terms: glossary_terms,
-            platform: @params[:platform]
-          )
-          user_content = text
+          translate_with_android_retries(text, target_locale) do |additional_instruction, user_content|
+            # Build system instruction and user content separately for better results
+            system_instruction = build_system_instruction(
+              source_locale, target_locale,
+              glossary_terms: glossary_terms,
+              platform: @params[:platform],
+              additional_instruction: additional_instruction
+            )
 
-          # Build parameters hash with separate system and user messages
-          parameters = {
-            model: @params[:model_name] || DEFAULT_MODEL,
-            messages: [
-              { role: 'system', content: system_instruction },
-              { role: 'user', content: user_content }
-            ],
-            temperature: (@params[:temperature] || DEFAULT_TEMPERATURE).to_f
-          }
+            # Build parameters hash with separate system and user messages
+            parameters = {
+              model: @params[:model_name] || DEFAULT_MODEL,
+              messages: [
+                { role: 'system', content: system_instruction },
+                { role: 'user', content: user_content }
+              ],
+              temperature: (@params[:temperature] || DEFAULT_TEMPERATURE).to_f
+            }
 
-          # Add service_tier if present
-          service_tier = @params[:service_tier].to_s.strip
-          parameters[:service_tier] = service_tier unless service_tier.empty?
+            # Add service_tier if present
+            service_tier = @params[:service_tier].to_s.strip
+            parameters[:service_tier] = service_tier unless service_tier.empty?
 
-          # Make API call
-          response = @client.chat(parameters: parameters)
+            # Make API call
+            response = @client.chat(parameters: parameters)
 
-          # Handle errors and extract text
-          if (error = response.dig('error', 'message'))
-            UI.error "OpenAI translation error: #{error}"
-            nil
-          else
-            enforce_android_limit(response.dig('choices', 0, 'message', 'content')&.strip)
+            # Handle errors and extract text
+            if (error = response.dig('error', 'message'))
+              UI.error "OpenAI translation error: #{error}"
+              nil
+            else
+              response.dig('choices', 0, 'message', 'content')&.strip
+            end
           end
         rescue StandardError => e
           UI.error "OpenAI provider error: #{e.message}"

@@ -6,8 +6,13 @@ require 'fileutils'
 
 module Fastlane
   module Actions
+    module SharedValues
+      JEV_TRANSLATION_CHECKS = :JEV_TRANSLATION_CHECKS
+    end
+
     class TranslateGptReleaseNotesAction < Action
       def self.run(params)
+        Actions.lane_context[SharedValues::JEV_TRANSLATION_CHECKS] = {}
         provider_name = params[:provider] || 'openai'
 
         unless Helper::CredentialResolver.credentials_exist?(provider_name, params)
@@ -56,6 +61,7 @@ module Fastlane
           next if locale == params[:master_locale]  # Skip master locale
           translations[locale] = helper.translate_text(master_texts, locale, params[:platform])
         end
+        Actions.lane_context[SharedValues::JEV_TRANSLATION_CHECKS] = helper.quality_checks
 
         if params[:dry_run]
           print_dry_run_preview(translated_texts, params)
@@ -293,6 +299,64 @@ module Fastlane
             end
           ),
           FastlaneCore::ConfigItem.new(
+            key: :jev_check,
+            env_name: 'TRANSLATE_JEV_CHECK',
+            description: 'Report optional Jev translation quality warnings without blocking writes',
+            type: Boolean,
+            optional: true,
+            default_value: false
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :android_length_retries,
+            env_name: 'TRANSLATE_ANDROID_LENGTH_RETRIES',
+            description: 'Extra shortening attempts for oversized Android translations (OpenAI, Anthropic, Gemini; 0 to 2)',
+            type: Integer,
+            optional: true,
+            default_value: 0,
+            verify_block: proc do |value|
+              UI.user_error!('android_length_retries must be between 0 and 2') unless value.between?(0, 2)
+            end
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :typesafe_api_key,
+            env_name: 'TYPESAFE_API_KEY',
+            description: 'TypeSafe API key for optional Jev quality checks',
+            type: String,
+            sensitive: true,
+            code_gen_sensitive: true,
+            optional: true
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :jev_model,
+            env_name: 'TRANSLATE_JEV_MODEL',
+            description: 'Jev model for translation quality checks',
+            type: String,
+            optional: true,
+            default_value: Helper::TranslationEvaluator::DEFAULT_MODEL
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :jev_threshold,
+            env_name: 'TRANSLATE_JEV_THRESHOLD',
+            description: 'Defect probability at or above which Jev reports a warning (0 to 1)',
+            type: Float,
+            optional: true,
+            default_value: 0.5,
+            verify_block: proc do |value|
+              UI.user_error!('jev_threshold must be between 0 and 1') unless value.finite? && value.between?(0, 1)
+            end
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :jev_timeout,
+            env_name: 'TRANSLATE_JEV_TIMEOUT',
+            description: 'Jev timeout in seconds per connection/read/write operation',
+            type: Integer,
+            optional: true,
+            default_value: 10,
+            verify_block: proc do |value|
+              UI.user_error!('jev_timeout must be positive') unless value > 0
+            end
+          ),
+          FastlaneCore::ConfigItem.new(
             key: :dry_run,
             env_name: 'TRANSLATE_DRY_RUN',
             description: 'Preview translations without writing files',
@@ -306,7 +370,8 @@ module Fastlane
       def self.output
         [
           ['LOCALES_TRANSLATED', 'List of locales to which translations were applied'],
-          ['MASTER_LOCALE', 'The master language/locale used as the source for translations']
+          ['MASTER_LOCALE', 'The master language/locale used as the source for translations'],
+          ['JEV_TRANSLATION_CHECKS', 'Per-locale Jev probabilities, warnings, and checker availability']
         ]
       end
 
